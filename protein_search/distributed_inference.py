@@ -9,7 +9,7 @@ from dataclasses import dataclass, field, fields, MISSING
 from argparse import ArgumentParser
 from torch.utils.data import Dataset, DataLoader
 from transformers import BatchEncoding, DataCollatorForLanguageModeling
-from typing import TypeVar, Type
+from typing import TypeVar, Type, get_type_hints
 
 T = TypeVar("T")
 
@@ -27,11 +27,17 @@ class ArgumentBase:
     def from_cli(cls: Type[T]) -> T:
         parser = ArgumentParser()
 
+        # Parse the type hints for the dataclass, this is used to set
+        # the type of each argument. Simply passing f.type to the parser
+        # will not work for Path objects, since the dataclass Path type
+        # is not recognized as a callable by the parser.
+        type_hints = get_type_hints(cls)
+
         # Add arguments for each field in the dataclass
         for f in fields(cls):
             # Set up the keyword arguments for the parser
             kwargs = {
-                "type": f.type,
+                "type": type_hints[f.name],
                 "required": f.default == MISSING,
                 "help": f.metadata.get("help", ""),
             }
