@@ -1,7 +1,7 @@
 """Utility to convert a UniProt XML file to a FASTA file."""
 from __future__ import annotations
 from bs4 import BeautifulSoup
-from protein_search.utils import ArgumentsBase, Sequence
+from protein_search.utils import ArgumentsBase, Sequence, write_fasta
 from pathlib import Path
 from dataclasses import dataclass, field
 
@@ -36,7 +36,11 @@ if __name__ == "__main__":
     # Parse the XML file
     sequences = parse_uniprot_xml(args.input_xml)
 
-    for seq in sequences:
-        print(f"Protein ID: {seq.tag}")
-        print(f"Protein Sequence: {seq.sequence}")
-        print("-" * 30)
+    # Log the number of sequences
+    print(
+        f"Found {len(sequences)} sequences in {args.input_xml} ,"
+        f" writing to {args.output_fasta}"
+    )
+
+    # Write the FASTA file
+    write_fasta(sequences, args.output_fasta)
