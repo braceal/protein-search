@@ -1,12 +1,12 @@
 from __future__ import annotations
-from accelerate import PartialState
-from transformers import EsmForMaskedLM, EsmTokenizer, PreTrainedModel
+from accelerate import Accelerator, PartialState
+from transformers import EsmForMaskedLM, EsmTokenizer, PreTrainedModel, BatchEncoding
 import torch
 import numpy as np
+from tqdm import tqdm
 from pathlib import Path
 from dataclasses import dataclass, field
 from torch.utils.data import Dataset, DataLoader
-from transformers import BatchEncoding, DataCollatorForLanguageModeling
 from protein_search.utils import ArgumentsBase, read_fasta
 
 
@@ -76,13 +76,16 @@ if __name__ == "__main__":
     # Parse arguments from the command line
     args = Arguments.from_cli()
 
-    # Initialize distributed state singleton
+    # Initialize distributed state
+    accelerator = Accelerator()
     distributed_state = PartialState()
 
     # Load model and tokenizer
     tokenizer = EsmTokenizer.from_pretrained(args.model)
     model = EsmForMaskedLM.from_pretrained(args.model)
-    model.eval().to(distributed_state.device)
+    model.eval()  # .to(distributed_state.device)
+
+    model = accelerator.prepare(model)
 
     # Collect all sequence files
     input_files = list(args.input_dir.glob("*"))
@@ -95,13 +98,13 @@ if __name__ == "__main__":
         files: list[Path]  # Spliting the list removes the type information
 
         # Loop over the files assigned to this process
-        for file in files:
+        for file in tqdm(files, desc="Processing files"):
             # Read fasta file sequences into a list
             sequences = [seq.sequence for seq in read_fasta(file)]
 
             # Build a torch dataset for efficient batching
             dataloader = DataLoader(
-                num_workers=4,
+                num_workers=args.num_data_workers,
                 pin_memory=True,
                 batch_size=args.batch_size,
                 dataset=SequenceDataset(sequences),
