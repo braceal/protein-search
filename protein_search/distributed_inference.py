@@ -1,5 +1,5 @@
 from __future__ import annotations
-from accelerate import Accelerator, PartialState
+from accelerate import PartialState
 from transformers import EsmForMaskedLM, EsmTokenizer, PreTrainedModel, BatchEncoding
 import torch
 import numpy as np
@@ -77,15 +77,14 @@ if __name__ == "__main__":
     args = Arguments.from_cli()
 
     # Initialize distributed state
-    accelerator = Accelerator()
     distributed_state = PartialState()
 
     # Load model and tokenizer
     tokenizer = EsmTokenizer.from_pretrained(args.model)
     model = EsmForMaskedLM.from_pretrained(args.model)
-    model.eval()  # .to(distributed_state.device)
-
-    model = accelerator.prepare(model)
+    model.eval()
+    model.to(distributed_state.device)
+    model.compile()
 
     # Collect all sequence files
     input_files = list(args.input_dir.glob("*"))
