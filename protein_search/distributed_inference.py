@@ -83,8 +83,8 @@ if __name__ == "__main__":
     tokenizer = EsmTokenizer.from_pretrained(args.model)
     model = EsmForMaskedLM.from_pretrained(args.model)
     model.eval()
-    model.compile()
     model.to(distributed_state.device)
+    model = model.compile()
 
     # Collect all sequence files
     input_files = list(args.input_dir.glob("*"))
