@@ -1,6 +1,5 @@
 """Utility to convert a UniProt XML file to a FASTA file."""
 from __future__ import annotations
-from bs4 import BeautifulSoup
 from protein_search.utils import ArgumentsBase, Sequence, write_fasta
 from pathlib import Path
 from dataclasses import dataclass, field
@@ -16,26 +15,11 @@ def parse_uniprot_xml(xml_file: Path) -> list[Sequence]:
 
     return [
         Sequence(
-            sequence=entry.findtext(
-                ".//uni:sequence", namespaces=ns
-            ),  # Get protein sequence
-            tag=entry.findtext(".//uni:accession", namespaces=ns),  # Get protein ID
+            sequence=entry.findtext(".//uni:sequence", namespaces=ns),
+            tag=entry.findtext(".//uni:accession", namespaces=ns),
         )
         for entry in root.iterfind(".//uni:entry", namespaces=ns)
     ]
-
-
-def parse_uniprot_xml_v2(xml_file: Path) -> str:
-    tree = etree.parse(str(xml_file))
-    root = tree.getroot()
-
-    # Define UniProt namespace
-    ns = {"uni": "http://uniprot.org/uniprot"}
-
-    return "".join(
-        f">{entry.findtext('.//uni:accession', namespaces=ns)}\n{entry.findtext('.//uni:sequence', namespaces=ns)}\n"
-        for entry in root.iterfind(".//uni:entry", namespaces=ns)
-    )
 
 
 @dataclass
@@ -59,14 +43,11 @@ def speed_test():
     sequences = []
     print(xml_files)
     for xml_file in tqdm(xml_files):
-        seqs = parse_uniprot_xml_v2(xml_file)
+        seqs = parse_uniprot_xml(xml_file)
         print(f"Found {len(seqs)} sequences in {xml_file}")
-        sequences.append(seqs)
+        sequences.extend(seqs)
 
-    with open("block_1000_test_v2.fasta", "w") as f:
-        f.writelines(sequences)
-
-    # write_fasta(sequences, "block_1000_test_v2.fasta")
+    write_fasta(sequences, "block_1000_test_v2.fasta")
 
 
 if __name__ == "__main__":
