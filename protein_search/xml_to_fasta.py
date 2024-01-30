@@ -1,29 +1,22 @@
+"""Utility to convert a UniProt XML file to a FASTA file."""
+from __future__ import annotations
 from bs4 import BeautifulSoup
-from protein_search.utils import ArgumentsBase
+from protein_search.utils import ArgumentsBase, Sequence
 from pathlib import Path
 from dataclasses import dataclass, field
 
 
-def parse_uniprot_xml(xml_file: Path):
+def parse_uniprot_xml(xml_file: Path) -> list[Sequence]:
     with open(xml_file, "r", encoding="utf-8") as file:
         soup = BeautifulSoup(file, "xml")
 
-    proteins = []
-    # TODO: turn into list comprehension
-    # TODO: Create sequence dataclass here and return a list of sequences
-    for entry in soup.find_all("entry"):
-        protein = {}
-
-        # Get protein ID
-        protein["id"] = entry.accession.text
-
-        # Get protein sequence
-        protein["sequence"] = entry.sequence.text
-
-        # You can add more fields as needed
-        proteins.append(protein)
-
-    return proteins
+    return [
+        Sequence(
+            sequence=entry.sequence.text,  # Get protein sequence
+            tag=entry.accession.text,  # Get protein ID
+        )
+        for entry in soup.find_all("entry")
+    ]
 
 
 @dataclass
@@ -41,9 +34,9 @@ if __name__ == "__main__":
     args = Arguments.from_cli()
 
     # Parse the XML file
-    proteins = parse_uniprot_xml(args.input_xml)
+    sequences = parse_uniprot_xml(args.input_xml)
 
-    for protein in proteins:
-        print(f"Protein ID: {protein['id']}")
-        print(f"Protein Sequence: {protein.get('sequence', 'N/A')}")
+    for seq in sequences:
+        print(f"Protein ID: {seq.tag}")
+        print(f"Protein Sequence: {seq.sequence}")
         print("-" * 30)
