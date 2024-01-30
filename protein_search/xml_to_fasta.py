@@ -18,7 +18,7 @@ def parse_uniprot_xml(xml_file: Path):
         protein["id"] = entry.accession.text
 
         # Get protein sequence
-        protein["sequence"] = entry.sequence
+        protein["sequence"] = entry.sequence.text
 
         # You can add more fields as needed
         proteins.append(protein)
