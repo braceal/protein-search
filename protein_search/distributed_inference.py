@@ -41,7 +41,7 @@ def compute_avg_embeddings(
 ) -> np.ndarray:
     """Function to compute averaged hidden embeddings."""
     embeddings = []
-    for batch in dataloader:
+    for batch in tqdm(dataloader):
         batch = batch.to(model.device)
         outputs = model(**batch, output_hidden_states=True)
         last_hidden_states = outputs.hidden_states[-1]
