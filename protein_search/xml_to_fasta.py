@@ -88,6 +88,7 @@ if __name__ == "__main__":
     print(f"Processing XML files in {len(chunks)} chunks...")
     print(f"Using {args.num_workers} worker processes...")
     print(f"Saving FASTA files to {args.output_dir}...")
+    print(f"Last chunk size: {len(chunks[-1])}, other chunk sizes: {len(chunks[0])}")
 
     # Define a worker function that processes a chunk of XML files
     worker_fn = functools.partial(process_uniprot_xml_files, output_dir=args.output_dir)
