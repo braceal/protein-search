@@ -84,7 +84,9 @@ if __name__ == "__main__":
     model = EsmForMaskedLM.from_pretrained(args.model)
     model.eval()
     model.to(distributed_state.device)
-    model = model.compile()
+    model = torch.compile(model)
+
+    print(model)
 
     # Collect all sequence files
     input_files = list(args.input_dir.glob("*"))
