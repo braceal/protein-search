@@ -81,10 +81,10 @@ if __name__ == "__main__":
 
     # Load model and tokenizer
     tokenizer = EsmTokenizer.from_pretrained(args.model)
-    model = EsmForMaskedLM.from_pretrained(args.model)
+    model = EsmForMaskedLM.from_pretrained(args.model, dtype=torch.float16)
     model.eval()
     model.to(distributed_state.device)
-    model = torch.compile(model)
+    model = torch.compile(model, fullgraph=True)
 
     print(model)
 
