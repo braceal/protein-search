@@ -76,6 +76,9 @@ if __name__ == "__main__":
     # Parse arguments from the command line
     args = Arguments.from_cli()
 
+    # Make the output directory
+    args.output_dir.mkdir(exist_ok=True)
+
     # Chunk the input files
     input_files = list(args.input_dir.glob("*.xml"))
     chunks = batch_data(input_files, args.chunk_size)
