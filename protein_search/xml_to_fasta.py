@@ -4,6 +4,12 @@ from protein_search.utils import ArgumentsBase, Sequence, write_fasta
 from pathlib import Path
 from dataclasses import dataclass, field
 from lxml import etree
+from typing import TypeVar
+import functools
+from uuid import uuid4
+from concurrent.futures import ProcessPoolExecutor
+
+T = TypeVar("T")
 
 
 def parse_uniprot_xml(xml_file: Path) -> list[Sequence]:
@@ -13,6 +19,7 @@ def parse_uniprot_xml(xml_file: Path) -> list[Sequence]:
     # Define UniProt namespace
     ns = {"uni": "http://uniprot.org/uniprot"}
 
+    # Parse the XML file and return a list of sequences with their accession ids
     return [
         Sequence(
             sequence=entry.findtext(".//uni:sequence", namespaces=ns),
@@ -22,49 +29,59 @@ def parse_uniprot_xml(xml_file: Path) -> list[Sequence]:
     ]
 
 
+def process_uniprot_xml_files(xml_files: list[Path], output_dir: Path) -> None:
+    sequences: list[Sequence] = []
+    for xml_file in xml_files:
+        sequences.extend(parse_uniprot_xml(xml_file))
+        # print(
+        #     f"Found {len(sequences)} sequences in {xml_file}, "
+        #     f"writing to {output_dir / xml_file.stem}.fasta"
+        # )
+    write_fasta(sequences, output_dir / f"{uuid4()}.fasta")
+
+
 @dataclass
 class Arguments(ArgumentsBase):
-    input_xml: Path = field(
-        metadata={"help": "An input XML file containing protein information"},
+    input_dir: Path = field(
+        metadata={"help": "A directory containing XML file with protein sequences"},
     )
-    output_fasta: Path = field(
+    output_dir: Path = field(
         metadata={"help": "An output FASTA file containing protein sequences"},
     )
-
-
-def speed_test():
-    xml_files = list(
-        Path(
-            "/nfs/ml_lab/projects/ml_lab/afreiburger/proteins/Uniprot/uniprot/trembl"
-        ).glob("block_1000*")
+    num_workers: int = field(
+        default=1,
+        metadata={
+            "help": "Number of worker processes to use for parsing the XML files"
+        },
     )
-    from tqdm import tqdm
+    chunk_size: int = field(
+        default=1,
+        metadata={"help": "Number of XML files to process in each worker process"},
+    )
 
-    sequences = []
-    print(xml_files)
-    for xml_file in tqdm(xml_files):
-        seqs = parse_uniprot_xml(xml_file)
-        print(f"Found {len(seqs)} sequences in {xml_file}")
-        sequences.extend(seqs)
 
-    write_fasta(sequences, "block_1000_test_v2.fasta")
+def batch_data(data: list[T], chunk_size: int) -> list[list[T]]:
+    """Batch data into chunks of size chunk_size."""
+    batches = [
+        data[i * chunk_size : (i + 1) * chunk_size]
+        for i in range(0, len(data) // chunk_size)
+    ]
+    if len(data) > chunk_size * len(batches):
+        batches.append(data[len(batches) * chunk_size :])
+    return batches
 
 
 if __name__ == "__main__":
-    speed_test()
-    exit(0)
-
     # Parse arguments from the command line
     args = Arguments.from_cli()
 
-    # Parse the XML file
-    sequences = parse_uniprot_xml(args.input_xml)
+    # Chunk the input files
+    input_files = list(args.input_dir.glob("*.xml"))
+    chunks = batch_data(input_files, args.chunk_size)
 
-    # Log the number of sequences
-    print(
-        f"Found {len(sequences)} sequences in {args.input_xml}, "
-        f" writing to {args.output_fasta}"
-    )
+    # Define a worker function that processes a chunk of XML files
+    worker_fn = functools.partial(process_uniprot_xml_files, output_dir=args.output_dir)
 
-    # Write the FASTA file
-    write_fasta(sequences, args.output_fasta)
+    # Use a multiprocessing pool to process chunks of XML files in parallel
+    with ProcessPoolExecutor(max_workers=args.num_workers) as pool:
+        pool.map(worker_fn, chunks)
