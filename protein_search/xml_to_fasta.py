@@ -1,5 +1,5 @@
 from bs4 import BeautifulSoup
-from cli import ArgumentsBase
+from protein_search.utils import ArgumentsBase
 from pathlib import Path
 from dataclasses import dataclass, field
 
