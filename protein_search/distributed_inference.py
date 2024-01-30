@@ -1,33 +1,19 @@
 from __future__ import annotations
 from accelerate import PartialState
 from transformers import EsmForMaskedLM, EsmTokenizer, PreTrainedModel
-import re
 import torch
 import numpy as np
 from pathlib import Path
 from dataclasses import dataclass, field
 from torch.utils.data import Dataset, DataLoader
 from transformers import BatchEncoding, DataCollatorForLanguageModeling
-from protein_search.utils import ArgumentsBase
+from protein_search.utils import ArgumentsBase, read_fasta
 
 
 # TODO: For big models, see here: https://huggingface.co/docs/accelerate/usage_guides/big_modeling
 # Documentation on using accelerate for inference: https://huggingface.co/docs/accelerate/usage_guides/distributed_inference
 # TODO: Skip the for loop over the sequence lenghts using the attention mask:
 #   https://stackoverflow.com/questions/65083581/how-to-compute-mean-max-of-huggingface-transformers-bert-token-embeddings-with-a
-
-
-def read_fasta(fasta_file: Path) -> list[str]:
-    """Reads fasta file sequences and returns a list of sequences
-    compatible with the tokenizer."""
-    text = Path(fasta_file).read_text()
-    pattern = re.compile("^>", re.MULTILINE)
-    non_parsed_seqs = re.split(pattern, text)[1:]
-    lines = [
-        line.replace("\n", "") for seq in non_parsed_seqs for line in seq.split("\n", 1)
-    ]
-
-    return [" ".join(seq).upper() for seq in lines[1::2]]
 
 
 class SequenceDataset(Dataset):
@@ -39,7 +25,9 @@ class SequenceDataset(Dataset):
         return len(self.sequences)
 
     def __getitem__(self, idx: int) -> BatchEncoding:
-        return self.tokenizer(self.sequences[idx], return_tensors="pt")
+        return self.tokenizer(
+            " ".join(self.sequences[idx].upper()), return_tensors="pt"
+        )
 
 
 @torch.no_grad()
@@ -100,8 +88,8 @@ if __name__ == "__main__":
 
         # Loop over the files assigned to this process
         for file in files:
-            # Read fasta file
-            sequences = read_fasta(file)
+            # Read fasta file sequences into a list
+            sequences = [seq.sequence for seq in read_fasta(file)]
 
             # Build a torch dataset for efficient batching
             dataloader = DataLoader(
