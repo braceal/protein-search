@@ -17,17 +17,22 @@ from protein_search.utils import ArgumentsBase, read_fasta
 
 
 class SequenceDataset(Dataset):
-    def __init__(self, sequences: list[str], tokenizer: EsmTokenizer) -> None:
+    def __init__(self, sequences: list[str]) -> None:
         self.sequences = sequences
-        self.tokenizer = tokenizer
 
     def __len__(self) -> int:
         return len(self.sequences)
 
-    def __getitem__(self, idx: int) -> BatchEncoding:
-        return self.tokenizer(
-            " ".join(self.sequences[idx].upper()), return_tensors="pt"
-        )
+    def __getitem__(self, idx: int) -> str:
+        return " ".join(self.sequences[idx].upper())
+
+
+class SequenceCollator:
+    def __init__(self, tokenizer: EsmTokenizer) -> None:
+        self.tokenizer = tokenizer
+
+    def __call__(self, batch: list[str]) -> BatchEncoding:
+        return self.tokenizer(batch, padding=True, truncation=True, return_tensors="pt")
 
 
 @torch.no_grad()
@@ -99,8 +104,8 @@ if __name__ == "__main__":
                 num_workers=4,
                 pin_memory=True,
                 batch_size=args.batch_size,
-                dataset=SequenceDataset(sequences, tokenizer),
-                collate_fn=DataCollatorForLanguageModeling(tokenizer),
+                dataset=SequenceDataset(sequences),
+                collate_fn=SequenceCollator(tokenizer),
             )
 
             # Compute averaged hidden embeddings
