@@ -82,6 +82,9 @@ if __name__ == "__main__":
     # Collect all sequence files
     input_files = list(args.input_dir.glob("*"))
 
+    # Make the output directory
+    args.output_dir.mkdir(exist_ok=True)
+
     # Distribute the input files across processes
     with distributed_state.split_between_processes(input_files) as files:
         files: list[Path]  # Spliting the list removes the type information
@@ -105,4 +108,4 @@ if __name__ == "__main__":
 
             # Save or use the averaged embeddings as needed
             # For example, you can save the embeddings to a file
-            np.save(f"{file.name}-embeddings.npy", avg_embeddings)
+            np.save(args.output_dir / f"{file.name}-embeddings.npy", avg_embeddings)

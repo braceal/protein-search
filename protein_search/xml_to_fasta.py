@@ -41,6 +41,17 @@ def process_uniprot_xml_files(xml_files: list[Path], output_dir: Path) -> None:
     write_fasta(sequences, output_dir / f"{uuid4()}.fasta")
 
 
+def batch_data(data: list[T], chunk_size: int) -> list[list[T]]:
+    """Batch data into chunks of size chunk_size."""
+    batches = [
+        data[i * chunk_size : (i + 1) * chunk_size]
+        for i in range(0, len(data) // chunk_size)
+    ]
+    if len(data) > chunk_size * len(batches):
+        batches.append(data[len(batches) * chunk_size :])
+    return batches
+
+
 @dataclass
 class Arguments(ArgumentsBase):
     input_dir: Path = field(
@@ -59,17 +70,6 @@ class Arguments(ArgumentsBase):
         default=1,
         metadata={"help": "Number of XML files to process in each worker process"},
     )
-
-
-def batch_data(data: list[T], chunk_size: int) -> list[list[T]]:
-    """Batch data into chunks of size chunk_size."""
-    batches = [
-        data[i * chunk_size : (i + 1) * chunk_size]
-        for i in range(0, len(data) // chunk_size)
-    ]
-    if len(data) > chunk_size * len(batches):
-        batches.append(data[len(batches) * chunk_size :])
-    return batches
 
 
 if __name__ == "__main__":
