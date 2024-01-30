@@ -111,6 +111,8 @@ if __name__ == "__main__":
                 collate_fn=SequenceCollator(tokenizer),
             )
 
+            dataloader = accelerator.prepare(dataloader)
+
             # Compute averaged hidden embeddings
             avg_embeddings = compute_avg_embeddings(model, dataloader)
 
