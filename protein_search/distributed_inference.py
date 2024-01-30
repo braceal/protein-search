@@ -15,6 +15,9 @@ from protein_search.utils import ArgumentsBase, read_fasta
 # TODO: Skip the for loop over the sequence lenghts using the attention mask:
 #   https://stackoverflow.com/questions/65083581/how-to-compute-mean-max-of-huggingface-transformers-bert-token-embeddings-with-a
 
+# Initialize distributed state
+distributed_state = PartialState()
+
 
 class SequenceDataset(Dataset):
     def __init__(self, sequences: list[str]) -> None:
@@ -42,7 +45,7 @@ def compute_avg_embeddings(
     """Function to compute averaged hidden embeddings."""
     embeddings = []
     for batch in tqdm(dataloader):
-        batch = batch.to(model.device)
+        batch = batch.to(distributed_state.device)
         outputs = model(**batch, output_hidden_states=True)
         last_hidden_states = outputs.hidden_states[-1]
         seq_lengths = batch.attention_mask.sum(axis=1)
@@ -75,9 +78,6 @@ class Arguments(ArgumentsBase):
 if __name__ == "__main__":
     # Parse arguments from the command line
     args = Arguments.from_cli()
-
-    # Initialize distributed state
-    distributed_state = PartialState()
 
     # Load model and tokenizer
     tokenizer = EsmTokenizer.from_pretrained(args.model)
