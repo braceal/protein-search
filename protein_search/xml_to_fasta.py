@@ -84,10 +84,10 @@ if __name__ == "__main__":
     chunks = batch_data(input_files, args.chunk_size)
 
     # Print some information about the job
-    print(f"Found {len(input_files)} XML files in {args.input_dir}...")
+    print(f"Found {len(input_files)} XML files in {args.input_dir.resolve()}...")
     print(f"Processing XML files in {len(chunks)} chunks...")
     print(f"Using {args.num_workers} worker processes...")
-    print(f"Saving FASTA files to {args.output_dir}...")
+    print(f"Saving FASTA files to {args.output_dir.resolve()}...")
     print(f"Last chunk size: {len(chunks[-1])}, other chunk sizes: {len(chunks[0])}")
 
     # Define a worker function that processes a chunk of XML files
