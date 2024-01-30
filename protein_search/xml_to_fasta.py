@@ -12,15 +12,30 @@ def parse_uniprot_xml(xml_file: Path) -> list[Sequence]:
     root = tree.getroot()
 
     # Define UniProt namespace
-    ns = {'uni': 'http://uniprot.org/uniprot'}
+    ns = {"uni": "http://uniprot.org/uniprot"}
 
     return [
         Sequence(
-            sequence=entry.findtext(".//uni:sequence", namespaces=ns), # Get protein sequence
+            sequence=entry.findtext(
+                ".//uni:sequence", namespaces=ns
+            ),  # Get protein sequence
             tag=entry.findtext(".//uni:accession", namespaces=ns),  # Get protein ID
         )
         for entry in root.iterfind(".//uni:entry", namespaces=ns)
     ]
+
+
+def parse_uniprot_xml_v2(xml_file: Path) -> str:
+    tree = etree.parse(str(xml_file))
+    root = tree.getroot()
+
+    # Define UniProt namespace
+    ns = {"uni": "http://uniprot.org/uniprot"}
+
+    return "".join(
+        f">{entry.findtext('.//uni:accession', namespaces=ns)}\n{entry.findtext('.//uni:sequence', namespaces=ns)}\n"
+        for entry in root.iterfind(".//uni:entry", namespaces=ns)
+    )
 
 
 @dataclass
@@ -32,17 +47,27 @@ class Arguments(ArgumentsBase):
         metadata={"help": "An output FASTA file containing protein sequences"},
     )
 
+
 def speed_test():
-    xml_files = list(Path("/nfs/ml_lab/projects/ml_lab/afreiburger/proteins/Uniprot/uniprot/trembl").glob("block_1000*"))
+    xml_files = list(
+        Path(
+            "/nfs/ml_lab/projects/ml_lab/afreiburger/proteins/Uniprot/uniprot/trembl"
+        ).glob("block_1000*")
+    )
     from tqdm import tqdm
+
     sequences = []
     print(xml_files)
     for xml_file in tqdm(xml_files):
-        seqs = parse_uniprot_xml(xml_file)
+        seqs = parse_uniprot_xml_v2(xml_file)
         print(f"Found {len(seqs)} sequences in {xml_file}")
-        sequences.extend(seqs)
+        sequences.append(seqs)
 
-    write_fasta(sequences, "block_1000_test_v2.fasta")
+    with open("block_1000_test_v2.fasta", "w") as f:
+        f.writelines(sequences)
+
+    # write_fasta(sequences, "block_1000_test_v2.fasta")
+
 
 if __name__ == "__main__":
     speed_test()
