@@ -38,7 +38,7 @@ if __name__ == "__main__":
 
     # Log the number of sequences
     print(
-        f"Found {len(sequences)} sequences in {args.input_xml} ,"
+        f"Found {len(sequences)} sequences in {args.input_xml}, "
         f" writing to {args.output_fasta}"
     )
 
