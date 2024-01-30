@@ -7,6 +7,7 @@ from lxml import etree
 from typing import TypeVar
 import functools
 from uuid import uuid4
+from tqdm import tqdm
 from concurrent.futures import ProcessPoolExecutor
 
 T = TypeVar("T")
@@ -84,4 +85,5 @@ if __name__ == "__main__":
 
     # Use a multiprocessing pool to process chunks of XML files in parallel
     with ProcessPoolExecutor(max_workers=args.num_workers) as pool:
-        pool.map(worker_fn, chunks)
+        for _ in tqdm(pool.map(worker_fn, chunks)):
+            pass
