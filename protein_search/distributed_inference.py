@@ -20,7 +20,7 @@ T = TypeVar("T")
 #   https://stackoverflow.com/questions/65083581/how-to-compute-mean-max-of-huggingface-transformers-bert-token-embeddings-with-a
 
 
-class ArgumentBase:
+class ArgumentsBase:
     """Base class for parsing arguments from the command line."""
 
     @classmethod
@@ -97,7 +97,7 @@ def compute_avg_embeddings(
 
 
 @dataclass
-class Arguments(ArgumentBase):
+class Arguments(ArgumentsBase):
     input_dir: Path = field(
         metadata={"help": "An input directory containing .fasta files"},
     )
