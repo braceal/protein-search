@@ -4,18 +4,22 @@ from bs4 import BeautifulSoup
 from protein_search.utils import ArgumentsBase, Sequence, write_fasta
 from pathlib import Path
 from dataclasses import dataclass, field
+from lxml import etree
 
 
 def parse_uniprot_xml(xml_file: Path) -> list[Sequence]:
-    with open(xml_file, "r", encoding="utf-8") as file:
-        soup = BeautifulSoup(file, "xml")
+    tree = etree.parse(str(xml_file))
+    root = tree.getroot()
+
+    # Define UniProt namespace
+    ns = {'uni': 'http://uniprot.org/uniprot'}
 
     return [
         Sequence(
-            sequence=entry.sequence.text,  # Get protein sequence
-            tag=entry.accession.text,  # Get protein ID
+            sequence=entry.findtext(".//uni:sequence", namespaces=ns), # Get protein sequence
+            tag=entry.findtext(".//uni:accession", namespaces=ns),  # Get protein ID
         )
-        for entry in soup.find_all("entry")
+        for entry in root.iterfind(".//uni:entry", namespaces=ns)
     ]
 
 
@@ -28,8 +32,22 @@ class Arguments(ArgumentsBase):
         metadata={"help": "An output FASTA file containing protein sequences"},
     )
 
+def speed_test():
+    xml_files = list(Path("/nfs/ml_lab/projects/ml_lab/afreiburger/proteins/Uniprot/uniprot/trembl").glob("block_1000*"))
+    from tqdm import tqdm
+    sequences = []
+    print(xml_files)
+    for xml_file in tqdm(xml_files):
+        seqs = parse_uniprot_xml(xml_file)
+        print(f"Found {len(seqs)} sequences in {xml_file}")
+        sequences.extend(seqs)
+
+    write_fasta(sequences, "block_1000_test_v2.fasta")
 
 if __name__ == "__main__":
+    speed_test()
+    exit(0)
+
     # Parse arguments from the command line
     args = Arguments.from_cli()
 
