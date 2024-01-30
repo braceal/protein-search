@@ -14,6 +14,7 @@ T = TypeVar("T")
 
 
 def parse_uniprot_xml(xml_file: Path) -> list[Sequence]:
+    # Load the XML file
     tree = etree.parse(str(xml_file))
     root = tree.getroot()
 
@@ -31,13 +32,12 @@ def parse_uniprot_xml(xml_file: Path) -> list[Sequence]:
 
 
 def process_uniprot_xml_files(xml_files: list[Path], output_dir: Path) -> None:
+    # Parse the XML files into a list of sequences
     sequences: list[Sequence] = []
     for xml_file in xml_files:
         sequences.extend(parse_uniprot_xml(xml_file))
-        # print(
-        #     f"Found {len(sequences)} sequences in {xml_file}, "
-        #     f"writing to {output_dir / xml_file.stem}.fasta"
-        # )
+
+    # Write the sequences to a FASTA file with a unique name
     write_fasta(sequences, output_dir / f"{uuid4()}.fasta")
 
 
@@ -83,10 +83,16 @@ if __name__ == "__main__":
     input_files = list(args.input_dir.glob("*.xml"))
     chunks = batch_data(input_files, args.chunk_size)
 
+    # Print some information about the job
+    print(f"Found {len(input_files)} XML files in {args.input_dir}...")
+    print(f"Processing XML files in {len(chunks)} chunks...")
+    print(f"Using {args.num_workers} worker processes...")
+    print(f"Saving FASTA files to {args.output_dir}...")
+
     # Define a worker function that processes a chunk of XML files
     worker_fn = functools.partial(process_uniprot_xml_files, output_dir=args.output_dir)
 
     # Use a multiprocessing pool to process chunks of XML files in parallel
     with ProcessPoolExecutor(max_workers=args.num_workers) as pool:
-        for _ in tqdm(pool.map(worker_fn, chunks)):
+        for _ in tqdm(pool.map(worker_fn, chunks), total=len(chunks)):
             pass
