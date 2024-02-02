@@ -6,6 +6,7 @@ from transformers import (
     PreTrainedModel,
     PreTrainedTokenizer,
 )
+import parsl
 import torch
 import numpy as np
 import functools
@@ -173,6 +174,7 @@ if __name__ == "__main__":
 
     # Set the parsl compute settings
     parsl_config = config.compute_settings.get_config(config.output_dir / "parsl")
+    parsl.load(parsl_config)
 
     # Distribute the input files across processes
     with ParslPoolExecutor(parsl_config) as pool:
