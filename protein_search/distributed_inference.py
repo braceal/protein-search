@@ -1,12 +1,5 @@
 from __future__ import annotations
-from transformers import (
-    EsmForMaskedLM,
-    EsmTokenizer,
-    BatchEncoding,
-    PreTrainedModel,
-    PreTrainedTokenizer,
-)
-import parsl
+from transformers import BatchEncoding, PreTrainedModel, PreTrainedTokenizer
 import torch
 import numpy as np
 import functools
@@ -17,7 +10,7 @@ from argparse import ArgumentParser
 from torch.utils.data import Dataset, DataLoader
 from parsl.concurrent import ParslPoolExecutor
 from protein_search.registry import register
-from protein_search.utils import BaseModel, read_fasta
+from protein_search.utils import BaseModel
 from protein_search.parsl import ComputeSettingsTypes
 
 # TODO: For big models, see here: https://huggingface.co/docs/accelerate/usage_guides/big_modeling
@@ -76,6 +69,13 @@ def embed_file(
     model_fn: Callable[[str], tuple[PreTrainedModel, PreTrainedTokenizer]],
 ) -> None:
     """Function to embed a single file and save a numpy array with embeddings."""
+    # Imports are here since this function is called in a parsl process
+    from protein_search.distributed_inference import (
+        InMemoryDataset,
+        DataCollator,
+        compute_avg_embeddings,
+    )
+
     # Initialize the model and tokenizer
     model, tokenizer = model_fn(model_id)
 
@@ -102,6 +102,8 @@ def embed_file(
 @register()
 def get_esm_model(model_id: str) -> tuple[PreTrainedModel, PreTrainedTokenizer]:
     """Initialize the model and tokenizer, subsequent calls will be warmstarts."""
+    from transformers import EsmForMaskedLM, EsmTokenizer
+
     # Load model and tokenizer
     tokenizer = EsmTokenizer.from_pretrained(model_id)
     model = EsmForMaskedLM.from_pretrained(model_id)
@@ -123,6 +125,9 @@ def get_esm_model(model_id: str) -> tuple[PreTrainedModel, PreTrainedTokenizer]:
 
 
 def fasta_data_reader(data_file: Path) -> list[str]:
+    """Read a fasta file and return a list of sequences."""
+    from protein_search.utils import read_fasta
+
     return [" ".join(seq.sequence.upper()) for seq in read_fasta(data_file)]
 
 
@@ -174,7 +179,6 @@ if __name__ == "__main__":
 
     # Set the parsl compute settings
     parsl_config = config.compute_settings.get_config(config.output_dir / "parsl")
-    parsl.load(parsl_config)
 
     # Distribute the input files across processes
     with ParslPoolExecutor(parsl_config) as pool:

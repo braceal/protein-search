@@ -12,7 +12,7 @@ except ImportError:
 from typing import Sequence
 from typing import Union
 
-from parsl.addresses import address_by_interface
+from parsl.addresses import address_by_interface, address_by_hostname
 from parsl.config import Config
 from parsl.executors import HighThroughputExecutor
 from parsl.launchers import MpiExecLauncher
@@ -91,7 +91,7 @@ class WorkstationSettings(BaseComputeSettings):
             retries=self.retries,
             executors=[
                 HighThroughputExecutor(
-                    address="localhost",
+                    address=address_by_hostname(),
                     label=self.label,
                     cpu_affinity="block",
                     available_accelerators=self.available_accelerators,
