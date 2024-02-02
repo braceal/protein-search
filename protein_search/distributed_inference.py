@@ -103,7 +103,12 @@ def get_esm_model(model_id: str) -> tuple[PreTrainedModel, PreTrainedTokenizer]:
     """Initialize the model and tokenizer, subsequent calls will be warmstarts."""
     # Load model and tokenizer
     tokenizer = EsmTokenizer.from_pretrained(model_id)
-    model = EsmForMaskedLM.from_pretrained(model_id, torch_dtype=torch.float16)
+    model = EsmForMaskedLM.from_pretrained(model_id)
+
+    # Convert the model to half precision
+    model.half()
+
+    # Set the model to evaluation mode
     model.eval()
 
     # Load the model onto the device
