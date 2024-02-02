@@ -1,9 +1,8 @@
 from __future__ import annotations
 from transformers import BatchEncoding, PreTrainedModel, PreTrainedTokenizer
+import functools
 import torch
 import numpy as np
-import functools
-from tqdm import tqdm
 from pathlib import Path
 from typing import Callable
 from argparse import ArgumentParser
@@ -43,6 +42,9 @@ def compute_avg_embeddings(
     model: PreTrainedModel, dataloader: DataLoader
 ) -> np.ndarray:
     """Function to compute averaged hidden embeddings."""
+    import numpy as np
+    from tqdm import tqdm
+
     # TODO: Instead of using a list, store the embeddings in a torch tensor
     # with the size reserved for the entire dataset.
     embeddings = []
@@ -70,6 +72,8 @@ def embed_file(
 ) -> None:
     """Function to embed a single file and save a numpy array with embeddings."""
     # Imports are here since this function is called in a parsl process
+    import numpy as np
+    from torch.utils.data import DataLoader
     from protein_search.distributed_inference import (
         InMemoryDataset,
         DataCollator,
@@ -102,6 +106,7 @@ def embed_file(
 @register()
 def get_esm_model(model_id: str) -> tuple[PreTrainedModel, PreTrainedTokenizer]:
     """Initialize the model and tokenizer, subsequent calls will be warmstarts."""
+    import torch
     from transformers import EsmForMaskedLM, EsmTokenizer
 
     # Load model and tokenizer
