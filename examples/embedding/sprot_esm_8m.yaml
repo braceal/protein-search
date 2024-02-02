@@ -1,0 +1,8 @@
+input_dir: /lambda_stor/homes/abrace/src/protein_search/data/sprot
+output_dir: data/sprot_esm_8m
+model: facebook/esm2_t6_8M_UR50D
+num_data_workers: 4
+batch_size: 64
+compute_settings:
+  name: workstation
+  available_accelerators: [0, 1]
