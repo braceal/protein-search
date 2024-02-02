@@ -5,4 +5,4 @@ num_data_workers: 4
 batch_size: 64
 compute_settings:
   name: workstation
-  available_accelerators: [0, 1]
+  available_accelerators: ["0", "1"]
