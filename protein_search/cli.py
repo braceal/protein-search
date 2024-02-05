@@ -17,7 +17,7 @@ def download_dataset(
         help='The name of the dataset to download [cath].',
     ),
     output_dir: Path = typer.Option(  # noqa: B008
-        ...,
+        'data',  # Default to data directory
         '--output_dir',
         '-o',
         help='The directory to save the dataset to.',
