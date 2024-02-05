@@ -23,6 +23,7 @@ dependencies = [
     "accelerate==0.26.1",
     "parsl==2024.1.29",
     "pydantic==2.6.0",
+    "typer[all]==0.9.0",
     "torch",
 ]
 
@@ -30,6 +31,9 @@ dependencies = [
 homepage = "https://github.com/braceal/protein-search/tree/main"
 documentation = "https://github.com/braceal/protein-search/tree/main"
 repository = "https://github.com/braceal/protein-search/tree/main"
+
+[project.scripts]
+protein-search = "protein_search.cli:main"
 
 [project.optional-dependencies]
 dev = [

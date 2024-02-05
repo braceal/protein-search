@@ -20,15 +20,16 @@ def download_dataset(url: str, filename: Path) -> None:
         urlretrieve(url, filename)
 
 
-def download_cath_dataset(data_dir: Path) -> None:
+def download_cath_dataset(output_dir: Path) -> None:
     """Download the CATH dataset.
 
     Parameters
     ----------
-    data_dir : Path
+    output_dir : Path
         The directory to save the dataset to.
     """
     # Create the data directory if it does not exist
+    data_dir = output_dir / 'cath'
     data_dir.mkdir(exist_ok=True)
 
     # The CATH dataset is available at the following URL prefix
