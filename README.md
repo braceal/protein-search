@@ -1,4 +1,4 @@
-# protein_search
+# protein-search
 Semantic similarity search for proteins.
 
 ## Installation
