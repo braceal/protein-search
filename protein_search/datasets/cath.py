@@ -30,7 +30,7 @@ def download_cath_dataset(output_dir: Path) -> None:
     """
     # Create the data directory if it does not exist
     data_dir = output_dir / 'cath'
-    data_dir.mkdir(exist_ok=True)
+    data_dir.mkdir(exist_ok=True, parents=True)
 
     # The CATH dataset is available at the following URL prefix
     pf = 'ftp://orengoftp.biochem.ucl.ac.uk/cath/releases/all-releases/v4_2_0/'
