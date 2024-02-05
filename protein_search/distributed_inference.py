@@ -1,47 +1,82 @@
+"""Distributed inference for generating embeddings."""
+
 from __future__ import annotations
-from transformers import BatchEncoding, PreTrainedModel, PreTrainedTokenizer
+
 import functools
-import torch
-import numpy as np
+from argparse import ArgumentParser
 from pathlib import Path
 from typing import Callable
-from argparse import ArgumentParser
-from torch.utils.data import Dataset, DataLoader
+
+import numpy as np
+import torch
 from parsl.concurrent import ParslPoolExecutor
+from torch.utils.data import DataLoader
+from torch.utils.data import Dataset
+from transformers import BatchEncoding
+from transformers import PreTrainedModel
+from transformers import PreTrainedTokenizer
+
+from protein_search.parsl import ComputeSettingsTypes
 from protein_search.registry import register
 from protein_search.utils import BaseModel
-from protein_search.parsl import ComputeSettingsTypes
 
 # TODO: For big models, see here: https://huggingface.co/docs/accelerate/usage_guides/big_modeling
 # Documentation on using accelerate for inference: https://huggingface.co/docs/accelerate/usage_guides/distributed_inference
-# TODO: Skip the for loop over the sequence lenghts using the attention mask:
+# TODO: Skip the for loop over the sequence lengths using the attention mask:
 #   https://stackoverflow.com/questions/65083581/how-to-compute-mean-max-of-huggingface-transformers-bert-token-embeddings-with-a
 
 
 class InMemoryDataset(Dataset):
+    """Holds the data in memory for efficient batching."""
+
     def __init__(self, data: list[str]) -> None:
         self.data = data
 
     def __len__(self) -> int:
+        """Length of the dataset."""
         return len(self.data)
 
     def __getitem__(self, idx: int) -> str:
+        """Get an item from the dataset."""
         return self.data[idx]
 
 
 class DataCollator:
+    """Data collator for batching sequences."""
+
     def __init__(self, tokenizer: PreTrainedTokenizer) -> None:
+        """Initialize the data collator."""
         self.tokenizer = tokenizer
 
     def __call__(self, batch: list[str]) -> BatchEncoding:
-        return self.tokenizer(batch, padding=True, truncation=True, return_tensors="pt")
+        """Collate the batch of sequences."""
+        return self.tokenizer(
+            batch,
+            padding=True,
+            truncation=True,
+            return_tensors='pt',
+        )
 
 
 @torch.no_grad()
 def compute_avg_embeddings(
-    model: PreTrainedModel, dataloader: DataLoader
+    model: PreTrainedModel,
+    dataloader: DataLoader,
 ) -> np.ndarray:
-    """Function to compute averaged hidden embeddings."""
+    """Compute averaged hidden embeddings.
+
+    Parameters
+    ----------
+    model : PreTrainedModel
+        The model to use for inference.
+    dataloader : DataLoader
+        The dataloader to use for batching the data.
+
+    Returns
+    -------
+    np.ndarray
+        A numpy array of averaged hidden embeddings.
+    """
     import numpy as np
     from tqdm import tqdm
 
@@ -49,10 +84,10 @@ def compute_avg_embeddings(
     # with the size reserved for the entire dataset.
     embeddings = []
     for batch in tqdm(dataloader):
-        batch = batch.to(model.device)
-        outputs = model(**batch, output_hidden_states=True)
+        inputs = batch.to(model.device)
+        outputs = model(**inputs, output_hidden_states=True)
         last_hidden_states = outputs.hidden_states[-1]
-        seq_lengths = batch.attention_mask.sum(axis=1)
+        seq_lengths = inputs.attention_mask.sum(axis=1)
         for seq_len, elem in zip(seq_lengths, last_hidden_states):
             # Compute averaged embedding
             embedding = elem[1 : seq_len - 1, :].mean(dim=0).cpu().numpy()
@@ -61,7 +96,7 @@ def compute_avg_embeddings(
     return np.array(embeddings)
 
 
-def embed_file(
+def embed_file(  # noqa: PLR0913
     file: Path,
     output_dir: Path,
     model_id: str,
@@ -70,15 +105,14 @@ def embed_file(
     data_reader_fn: Callable[[Path], list[str]],
     model_fn: Callable[[str], tuple[PreTrainedModel, PreTrainedTokenizer]],
 ) -> None:
-    """Function to embed a single file and save a numpy array with embeddings."""
+    """Embed a single file and save a numpy array with embeddings."""
     # Imports are here since this function is called in a parsl process
     import numpy as np
     from torch.utils.data import DataLoader
-    from protein_search.distributed_inference import (
-        InMemoryDataset,
-        DataCollator,
-        compute_avg_embeddings,
-    )
+
+    from protein_search.distributed_inference import compute_avg_embeddings
+    from protein_search.distributed_inference import DataCollator
+    from protein_search.distributed_inference import InMemoryDataset
 
     # Initialize the model and tokenizer
     model, tokenizer = model_fn(model_id)
@@ -100,14 +134,18 @@ def embed_file(
 
     # Save or use the averaged embeddings as needed
     # For example, you can save the embeddings to a file
-    np.save(output_dir / f"{file.name}-embeddings.npy", avg_embeddings)
+    np.save(output_dir / f'{file.name}-embeddings.npy', avg_embeddings)
 
 
-@register()
-def get_esm_model(model_id: str) -> tuple[PreTrainedModel, PreTrainedTokenizer]:
-    """Initialize the model and tokenizer, subsequent calls will be warmstarts."""
+@register()  # type: ignore[arg-type]
+def get_esm_model(
+    model_id: str,
+) -> tuple[PreTrainedModel, PreTrainedTokenizer]:
+    """Initialize the model and tokenizer."""
+    # Subsequent calls will be warmstarts.
     import torch
-    from transformers import EsmForMaskedLM, EsmTokenizer
+    from transformers import EsmForMaskedLM
+    from transformers import EsmTokenizer
 
     # Load model and tokenizer
     tokenizer = EsmTokenizer.from_pretrained(model_id)
@@ -120,7 +158,7 @@ def get_esm_model(model_id: str) -> tuple[PreTrainedModel, PreTrainedTokenizer]:
     model.eval()
 
     # Load the model onto the device
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     model.to(device)
 
     # Compile the model for faster inference
@@ -133,32 +171,34 @@ def fasta_data_reader(data_file: Path) -> list[str]:
     """Read a fasta file and return a list of sequences."""
     from protein_search.utils import read_fasta
 
-    return [" ".join(seq.sequence.upper()) for seq in read_fasta(data_file)]
+    return [' '.join(seq.sequence.upper()) for seq in read_fasta(data_file)]
 
 
 class Config(BaseModel):
+    """Configuration for distributed inference."""
+
+    # An input directory containing .fasta files.
     input_dir: Path
-    """An input directory containing .fasta files."""
+    # An output directory to save the embeddings.
     output_dir: Path
-    """An output directory to save the embeddings."""
-    model: str = "facebook/esm2_t6_8M_UR50D"
-    """Model name or path."""
+    # Model name or path.
+    model: str = 'facebook/esm2_t6_8M_UR50D'
+    # Number of data workers for batching.
     num_data_workers: int = 4
-    """Number of data workers for batching."""
+    # Inference batch size.
     batch_size: int = 8
-    """Inference batch size."""
+    # Settings for the parsl compute backend.
     compute_settings: ComputeSettingsTypes
-    """Settings for the parsl compute backend."""
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     # Parse arguments from the command line
-    parser = ArgumentParser(description="Embed protein sequences using ESM")
+    parser = ArgumentParser(description='Embed protein sequences using ESM')
     parser.add_argument(
-        "--config",
+        '--config',
         type=Path,
         required=True,
-        help="Path to the .yaml configuration file",
+        help='Path to the .yaml configuration file',
     )
     args = parser.parse_args()
 
@@ -166,7 +206,7 @@ if __name__ == "__main__":
     config = Config.from_yaml(args.config)
 
     # Collect all sequence files
-    input_files = list(config.input_dir.glob("*"))
+    input_files = list(config.input_dir.glob('*'))
 
     # Make the output directory
     config.output_dir.mkdir(exist_ok=True)
@@ -183,7 +223,9 @@ if __name__ == "__main__":
     )
 
     # Set the parsl compute settings
-    parsl_config = config.compute_settings.get_config(config.output_dir / "parsl")
+    parsl_config = config.compute_settings.get_config(
+        config.output_dir / 'parsl',
+    )
 
     # Distribute the input files across processes
     with ParslPoolExecutor(parsl_config) as pool:

@@ -1,18 +1,25 @@
 """Utilities for protein_search."""
+
 from __future__ import annotations
+
+import json
 import re
 from argparse import ArgumentParser
-from dataclasses import dataclass, field, fields, MISSING
+from dataclasses import dataclass
+from dataclasses import field
+from dataclasses import fields
+from dataclasses import MISSING
 from pathlib import Path
-from typing import Union, TypeVar, Type, get_type_hints
-import json
-import yaml
-from pydantic import BaseModel as _BaseModel
+from typing import get_type_hints
+from typing import TypeVar
+from typing import Union
 
+import yaml  # type: ignore[import-untyped]
+from pydantic import BaseModel as _BaseModel
 
 PathLike = Union[str, Path]
 
-T = TypeVar("T")
+T = TypeVar('T')
 
 
 class BaseModel(_BaseModel):
@@ -26,7 +33,7 @@ class BaseModel(_BaseModel):
         path : str
             The path to the JSON file.
         """
-        with open(path, "w") as fp:
+        with open(path, 'w') as fp:
             json.dump(self.dict(), fp, indent=2)
 
     @classmethod
@@ -38,7 +45,7 @@ class BaseModel(_BaseModel):
         path : str
             The path to the JSON file.
 
-        Returns:
+        Returns
         -------
         T
             A specific BaseModel instance.
@@ -55,7 +62,7 @@ class BaseModel(_BaseModel):
         path : str
             The path to the YAML file.
         """
-        with open(path, mode="w") as fp:
+        with open(path, 'w') as fp:
             yaml.dump(json.loads(self.json()), fp, indent=4, sort_keys=False)
 
     @classmethod
@@ -67,7 +74,7 @@ class BaseModel(_BaseModel):
         path : PathLike
             The path to the YAML file.
 
-        Returns:
+        Returns
         -------
         T
             A specific BaseModel instance.
@@ -81,7 +88,8 @@ class ArgumentsBase:
     """Base class for parsing arguments from the command line."""
 
     @classmethod
-    def from_cli(cls: Type[T]) -> T:
+    def from_cli(cls: type[T]) -> T:
+        """Parse arguments from the command line."""
         parser = ArgumentParser()
 
         # Parse the type hints for the dataclass, this is used to set
@@ -91,19 +99,19 @@ class ArgumentsBase:
         type_hints = get_type_hints(cls)
 
         # Add arguments for each field in the dataclass
-        for f in fields(cls):
+        for f in fields(cls):  # type: ignore[arg-type]
             # Set up the keyword arguments for the parser
             kwargs = {
-                "type": type_hints[f.name],
-                "required": f.default == MISSING,
-                "help": f.metadata.get("help", ""),
+                'type': type_hints[f.name],
+                'required': f.default == MISSING,
+                'help': f.metadata.get('help', ''),
             }
             # Use the default value if the field is not required
-            if not kwargs["required"]:
-                kwargs["default"] = f.default
+            if not kwargs['required']:
+                kwargs['default'] = f.default
 
             # Add the argument to the parser
-            parser.add_argument(f"--{f.name}", **kwargs)
+            parser.add_argument(f'--{f.name}', **kwargs)
 
         args = parser.parse_args()
         return cls(**vars(args))
@@ -111,6 +119,8 @@ class ArgumentsBase:
 
 @dataclass
 class Sequence:
+    """Biological sequence dataclass."""
+
     sequence: str
     """Biological sequence (Nucleotide/Amino acid sequence)."""
     tag: str
@@ -118,50 +128,61 @@ class Sequence:
 
 
 def read_fasta(fasta_file: PathLike) -> list[Sequence]:
-    """Reads fasta file sequences and description tags into dataclass."""
+    """Read fasta file sequences and description tags into dataclass."""
     text = Path(fasta_file).read_text()
-    pattern = re.compile("^>", re.MULTILINE)
+    pattern = re.compile('^>', re.MULTILINE)
     non_parsed_seqs = re.split(pattern, text)[1:]
     lines = [
-        line.replace("\n", "") for seq in non_parsed_seqs for line in seq.split("\n", 1)
+        line.replace('\n', '')
+        for seq in non_parsed_seqs
+        for line in seq.split('\n', 1)
     ]
 
     return [
-        Sequence(sequence=seq, tag=tag) for seq, tag in zip(lines[1::2], lines[::2])
+        Sequence(sequence=seq, tag=tag)
+        for seq, tag in zip(lines[1::2], lines[::2])
     ]
 
 
 def write_fasta(
-    sequences: Sequence | list[Sequence], fasta_file: PathLike, mode: str = "w"
+    sequences: Sequence | list[Sequence],
+    fasta_file: PathLike,
+    mode: str = 'w',
 ) -> None:
     """Write or append sequences to a fasta file."""
     seqs = [sequences] if isinstance(sequences, Sequence) else sequences
     with open(fasta_file, mode) as f:
         for seq in seqs:
-            f.write(f">{seq.tag}\n{seq.sequence}\n")
+            f.write(f'>{seq.tag}\n{seq.sequence}\n')
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
 
     @dataclass
     class Arguments(ArgumentsBase):
+        """Arguments for the protein_search module test."""
+
         input_dir: Path = field(
-            metadata={"help": "An input directory containing .fasta files"},
+            metadata={'help': 'An input directory containing .fasta files'},
         )
         output_dir: Path = field(
-            metadata={"help": "An output directory to save the embeddings"},
+            metadata={'help': 'An output directory to save the embeddings'},
         )
         model: str = field(
-            default="facebook/esm2_t6_8M_UR50D",
-            metadata={"help": "Model name or path"},
+            default='facebook/esm2_t6_8M_UR50D',
+            metadata={'help': 'Model name or path'},
         )
-        batch_size: int = field(default=8, metadata={"help": "Inference batch size"})
+        batch_size: int = field(
+            default=8,
+            metadata={'help': 'Inference batch size'},
+        )
         num_data_workers: int = field(
-            default=4, metadata={"help": "Number of data workers for batching"}
+            default=4,
+            metadata={'help': 'Number of data workers for batching'},
         )
 
     args = Arguments.from_cli()
     print(args)
 
-    args2 = Arguments(input_dir=Path("foo"), output_dir=Path("bar"))
+    args2 = Arguments(input_dir=Path('foo'), output_dir=Path('bar'))
     print(args2)

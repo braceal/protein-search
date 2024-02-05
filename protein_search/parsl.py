@@ -12,20 +12,22 @@ except ImportError:
 from typing import Sequence
 from typing import Union
 
-from parsl.addresses import address_by_interface, address_by_hostname
+from parsl.addresses import address_by_hostname
+from parsl.addresses import address_by_interface
 from parsl.config import Config
 from parsl.executors import HighThroughputExecutor
 from parsl.launchers import MpiExecLauncher
 from parsl.providers import LocalProvider
 from parsl.providers import PBSProProvider
 
-from protein_search.utils import BaseModel, PathLike
+from protein_search.utils import BaseModel
+from protein_search.utils import PathLike
 
 
 class BaseComputeSettings(BaseModel, ABC):
     """Compute settings (HPC platform, number of GPUs, etc)."""
 
-    name: Literal[""] = ""
+    name: Literal[''] = ''
     """Name of the platform to use."""
 
     @abstractmethod
@@ -37,7 +39,7 @@ class BaseComputeSettings(BaseModel, ABC):
         run_dir : PathLike
             Path to store monitoring DB and parsl logs.
 
-        Returns:
+        Returns
         -------
         Config
             Parsl configuration.
@@ -48,11 +50,11 @@ class BaseComputeSettings(BaseModel, ABC):
 class LocalSettings(BaseComputeSettings):
     """Settings for a local machine (mainly for testing purposes)."""
 
-    name: Literal["local"] = "local"  # type: ignore[assignment]
+    name: Literal['local'] = 'local'  # type: ignore[assignment]
     max_workers: int = 1
     cores_per_worker: float = 0.0001
     worker_port_range: tuple[int, int] = (10000, 20000)
-    label: str = "htex"
+    label: str = 'htex'
 
     def get_config(self, run_dir: PathLike) -> Config:
         """Create a parsl configuration for testing locally."""
@@ -61,7 +63,7 @@ class LocalSettings(BaseComputeSettings):
             strategy=None,
             executors=[
                 HighThroughputExecutor(
-                    address="localhost",
+                    address='localhost',
                     label=self.label,
                     max_workers=self.max_workers,
                     cores_per_worker=self.cores_per_worker,
@@ -75,14 +77,14 @@ class LocalSettings(BaseComputeSettings):
 class WorkstationSettings(BaseComputeSettings):
     """Settings for a workstation with GPUs."""
 
-    name: Literal["workstation"] = "workstation"  # type: ignore[assignment]
+    name: Literal['workstation'] = 'workstation'  # type: ignore[assignment]
     """Name of the platform."""
     available_accelerators: Union[int, Sequence[str]] = 8  # noqa: UP007
     """Number of GPU accelerators to use."""
     worker_port_range: tuple[int, int] = (10000, 20000)
     """Port range."""
     retries: int = 1
-    label: str = "htex"
+    label: str = 'htex'
 
     def get_config(self, run_dir: PathLike) -> Config:
         """Create a parsl configuration for running on a workstation."""
@@ -93,7 +95,7 @@ class WorkstationSettings(BaseComputeSettings):
                 HighThroughputExecutor(
                     address=address_by_hostname(),
                     label=self.label,
-                    cpu_affinity="block",
+                    cpu_affinity='block',
                     available_accelerators=self.available_accelerators,
                     worker_port_range=self.worker_port_range,
                     provider=LocalProvider(init_blocks=1, max_blocks=1),
@@ -108,14 +110,14 @@ class PolarisSettings(BaseComputeSettings):
     See here for details: https://docs.alcf.anl.gov/polaris/workflows/parsl/
     """
 
-    name: Literal["polaris"] = "polaris"  # type: ignore[assignment]
-    label: str = "htex"
+    name: Literal['polaris'] = 'polaris'  # type: ignore[assignment]
+    label: str = 'htex'
 
     num_nodes: int = 1
     """Number of nodes to request"""
-    worker_init: str = ""
+    worker_init: str = ''
     """How to start a worker. Should load any modules and environments."""
-    scheduler_options: str = "#PBS -l filesystems=home:eagle:grand"
+    scheduler_options: str = '#PBS -l filesystems=home:eagle:grand'
     """PBS directives, pass -J for array jobs."""
     account: str
     """The account to charge compute to."""
@@ -125,7 +127,7 @@ class PolarisSettings(BaseComputeSettings):
     """Maximum job time."""
     cpus_per_node: int = 32
     """Up to 64 with multithreading."""
-    strategy: str = "simple"
+    strategy: str = 'simple'
 
     def get_config(self, run_dir: PathLike) -> Config:
         """Create a parsl configuration for running on Polaris@ALCF.
@@ -149,15 +151,15 @@ class PolarisSettings(BaseComputeSettings):
                     max_workers=self.cpus_per_node,
                     # Ensures one worker per accelerator
                     available_accelerators=4,
-                    address=address_by_interface("bond0"),
-                    cpu_affinity="block-reverse",
+                    address=address_by_interface('bond0'),
+                    cpu_affinity='block-reverse',
                     # Increase if you have many more tasks than workers
                     prefetch_capacity=0,
-                    start_method="spawn",
+                    start_method='spawn',
                     provider=PBSProProvider(
                         launcher=MpiExecLauncher(
-                            bind_cmd="--cpu-bind",
-                            overrides="--depth=64 --ppn 1",
+                            bind_cmd='--cpu-bind',
+                            overrides='--depth=64 --ppn 1',
                         ),
                         account=self.account,
                         queue=self.queue,

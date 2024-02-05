@@ -20,8 +20,8 @@ if sys.version_info >= (3, 10):
 else:
     from typing_extensions import ParamSpec
 
-T = TypeVar("T")
-P = ParamSpec("P")
+T = TypeVar('T')
+P = ParamSpec('P')
 
 
 @dataclass
@@ -61,7 +61,7 @@ class RegistrySingleton:
 
     def __new__(cls) -> RegistrySingleton:
         """Create a singleton instance of the registry."""
-        if not hasattr(cls, "_instance"):
+        if not hasattr(cls, '_instance'):
             cls._instance = super(RegistrySingleton, cls).__new__(cls)  # noqa: UP008
             cls._instance._registry = {}
             cls._instance._active = None
@@ -103,7 +103,7 @@ class RegistrySingleton:
 
         # Raise an error if the object is not registered
         if cls_fn not in self._registry:
-            raise ValueError(f"Object {cls_fn.__name__} not registered.")
+            raise ValueError(f'Object {cls_fn.__name__} not registered.')
 
         # If the object is already active, then return the previously
         # instantiated object
