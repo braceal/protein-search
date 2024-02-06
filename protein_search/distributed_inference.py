@@ -251,7 +251,7 @@ class Config(BaseModel):
     # An output directory to save the embeddings.
     output_dir: Path
     # A set of glob patterns to match the input files.
-    glob_files: list[str] = Field(default_factory=list, default=['*'])
+    glob_files: list[str] = Field(default=['*'])
     # Model name or path.
     model: str = 'facebook/esm2_t6_8M_UR50D'
     # Number of data workers for batching.
