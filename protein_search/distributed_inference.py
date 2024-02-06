@@ -251,7 +251,7 @@ class Config(BaseModel):
     # An output directory to save the embeddings.
     output_dir: Path
     # A set of glob patterns to match the input files.
-    glob_files: list[str] = Field(default=['*'])
+    glob_patterns: list[str] = Field(default=['*'])
     # Model name or path.
     model: str = 'facebook/esm2_t6_8M_UR50D'
     # Number of data workers for batching.
@@ -278,11 +278,14 @@ if __name__ == '__main__':
 
     # Collect all input files
     input_files = []
-    for pattern in config.glob_files:
+    for pattern in config.glob_patterns:
         input_files.extend(list(config.input_dir.glob(pattern)))
 
     # Make the output directory
     config.output_dir.mkdir(exist_ok=True)
+
+    # Log the configuration
+    config.write_yaml(config.output_dir / 'config.yaml')
 
     # Set the static arguments of the worker function
     worker_fn = functools.partial(
