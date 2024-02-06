@@ -1,0 +1,9 @@
+input_dir: data/cath
+output_dir: data/cath/cath_esm_8m_embeddings
+input_glob: ['*.fasta']
+model: facebook/esm2_t6_8M_UR50D
+num_data_workers: 4
+batch_size: 64
+compute_settings:
+  name: workstation
+  available_accelerators: ["0"]
