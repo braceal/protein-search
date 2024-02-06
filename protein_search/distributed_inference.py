@@ -96,6 +96,74 @@ def compute_avg_embeddings(
     return np.array(embeddings)
 
 
+@torch.no_grad()
+def compute_avg_embeddings_v2(
+    model: PreTrainedModel,
+    dataloader: DataLoader,
+) -> np.ndarray:
+    """Compute averaged hidden embeddings.
+
+    Parameters
+    ----------
+    model : PreTrainedModel
+        The model to use for inference.
+    dataloader : DataLoader
+        The dataloader to use for batching the data.
+
+    Returns
+    -------
+    np.ndarray
+        A numpy array of averaged hidden embeddings.
+    """
+    from tqdm import tqdm
+
+    device = model.device
+
+    # Get the number of embeddings and the embedding size
+    num_embeddings = len(dataloader.dataset)
+    embedding_size = model.config.hidden_size
+
+    # Initialize a torch tensor for storing embeddings on the GPU
+    embeddings = torch.empty(
+        (num_embeddings, embedding_size),
+        dtype=model.dtype,
+        device=device,
+    )
+
+    # Index for storing embeddings
+    idx = 0
+
+    # Iterate over batches
+    for batch in tqdm(dataloader):
+        # Move batch to the device
+        batch = batch.to(device)  # noqa: PLW2901
+
+        # Forward pass of the model
+        outputs = model(**batch, output_hidden_states=True)
+
+        # Get the last hidden states
+        hidden_states = outputs.hidden_states[-1]
+
+        # Compute mask for valid positions
+        mask = (
+            batch.attention_mask[:, 1:-1]
+            .unsqueeze(-1)
+            .expand_as(hidden_states)
+        )
+
+        # Sum over valid positions and divide by the number of valid positions
+        sum_embeddings = torch.sum(hidden_states[:, 1:-1, :] * mask, dim=1)
+
+        # Divide by the number of valid positions
+        avg_embeddings = sum_embeddings / mask.sum(dim=1).unsqueeze(-1)
+
+        # Move embeddings to CPU before storing
+        embeddings[idx : idx + batch.size(0), :] = avg_embeddings.cpu()
+        idx += batch.size(0)
+
+    return embeddings.numpy()
+
+
 def embed_file(  # noqa: PLR0913
     file: Path,
     output_dir: Path,
