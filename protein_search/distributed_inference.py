@@ -199,6 +199,34 @@ def get_esm_model(
     return model, tokenizer
 
 
+@register()  # type: ignore[arg-type]
+def get_auto_model(
+    model_id: str,
+) -> tuple[PreTrainedModel, PreTrainedTokenizer]:
+    """Initialize the model and tokenizer."""
+    from transformers import AutoModel
+    from transformers import AutoTokenizer
+
+    model = AutoModel.from_pretrained(
+        model_id,
+        deterministic_eval=True,
+        trust_remote_code=True,
+    )
+    tokenizer = AutoTokenizer.from_pretrained(model_id, trust_remote_code=True)
+
+    # Load the model onto the device
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    model.to(device)
+
+    # Set the model to evaluation mode
+    model.eval()
+
+    # Compile the model for faster inference
+    model = torch.compile(model, fullgraph=True)
+
+    return model, tokenizer
+
+
 def single_sequence_per_line_data_reader(
     data_file: Path,
     header_lines: int = 1,
@@ -227,6 +255,14 @@ READER_STRATEGIES = {
     'fasta': fasta_data_reader,
 }
 
+MODEL_STRATEGIES: dict[
+    str,
+    Callable[[str], tuple[PreTrainedModel, PreTrainedTokenizer]],
+] = {
+    'esm': get_esm_model,
+    'auto': get_auto_model,
+}
+
 
 class Config(BaseModel):
     """Configuration for distributed inference."""
@@ -245,6 +281,8 @@ class Config(BaseModel):
     batch_size: int = 8
     # Strategy for reading the input files.
     data_reader_fn: str = 'fasta_data_reader'
+    # Strategy for initializing the model and tokenizer.
+    model_fn: str = 'esm'
     # Settings for the parsl compute backend.
     compute_settings: ComputeSettingsTypes
 
@@ -263,11 +301,6 @@ if __name__ == '__main__':
     # Load the configuration
     config = Config.from_yaml(args.config)
 
-    # Collect all input files
-    input_files = []
-    for pattern in config.glob_patterns:
-        input_files.extend(list(config.input_dir.glob(pattern)))
-
     # Make the output directory
     config.output_dir.mkdir(exist_ok=True)
 
@@ -281,6 +314,11 @@ if __name__ == '__main__':
             f'Invalid data reader function: {config.data_reader_fn}',
         )
 
+    # Get the model function
+    model_fn = MODEL_STRATEGIES.get(config.model_fn, None)
+    if model_fn is None:
+        raise ValueError(f'Invalid model function: {config.model_fn}')
+
     # Set the static arguments of the worker function
     worker_fn = functools.partial(
         embed_file,
@@ -289,8 +327,13 @@ if __name__ == '__main__':
         batch_size=config.batch_size,
         num_data_workers=config.num_data_workers,
         data_reader_fn=data_reader_fn,
-        model_fn=get_esm_model,
+        model_fn=model_fn,
     )
+
+    # Collect all input files
+    input_files = []
+    for pattern in config.glob_patterns:
+        input_files.extend(list(config.input_dir.glob(pattern)))
 
     # Set the parsl compute settings
     parsl_config = config.compute_settings.get_config(
