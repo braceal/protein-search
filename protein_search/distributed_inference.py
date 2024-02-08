@@ -204,6 +204,7 @@ def get_auto_model(
     model_id: str,
 ) -> tuple[PreTrainedModel, PreTrainedTokenizer]:
     """Initialize the model and tokenizer."""
+    import torch
     from transformers import AutoModel
     from transformers import AutoTokenizer
 
