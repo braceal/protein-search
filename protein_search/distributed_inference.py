@@ -279,7 +279,7 @@ class Config(BaseModel):
     # Strategy for reading the input files.
     data_reader_fn: str = 'fasta_data_reader'
     # Strategy for initializing the model and tokenizer.
-    model_fn: str = 'esm'
+    embedding_model_fn: str = 'esm'
     # Settings for the parsl compute backend.
     compute_settings: ComputeSettingsTypes
 
@@ -312,9 +312,11 @@ if __name__ == '__main__':
         )
 
     # Get the model function
-    model_fn = MODEL_STRATEGIES.get(config.model_fn, None)
+    model_fn = MODEL_STRATEGIES.get(config.embedding_model_fn, None)
     if model_fn is None:
-        raise ValueError(f'Invalid model function: {config.model_fn}')
+        raise ValueError(
+            f'Invalid model function: {config.embedding_model_fn}',
+        )
 
     # Set the static arguments of the worker function
     worker_fn = functools.partial(
