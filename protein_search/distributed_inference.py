@@ -236,11 +236,33 @@ def get_esm_model(
     return model, tokenizer
 
 
+def single_sequence_per_line_data_reader(
+    data_file: Path,
+    header_lines: int = 1,
+) -> list[str]:
+    """Read a file with one sequence per line.
+
+    Parameters
+    ----------
+    data_file : Path
+        The file to read.
+    header_lines : int, optional (default=1)
+        The number of header lines to skip.
+    """
+    return data_file.read_text().splitlines()[header_lines:]
+
+
 def fasta_data_reader(data_file: Path) -> list[str]:
     """Read a fasta file and return a list of sequences."""
     from protein_search.utils import read_fasta
 
     return [' '.join(seq.sequence.upper()) for seq in read_fasta(data_file)]
+
+
+READER_STRATEGIES = {
+    'single_sequence_per_line': single_sequence_per_line_data_reader,
+    'fasta': fasta_data_reader,
+}
 
 
 class Config(BaseModel):
@@ -258,6 +280,8 @@ class Config(BaseModel):
     num_data_workers: int = 4
     # Inference batch size.
     batch_size: int = 8
+    # Strategy for reading the input files.
+    data_reader_fn: str = 'fasta_data_reader'
     # Settings for the parsl compute backend.
     compute_settings: ComputeSettingsTypes
 
@@ -287,6 +311,13 @@ if __name__ == '__main__':
     # Log the configuration
     config.write_yaml(config.output_dir / 'config.yaml')
 
+    # Get the data reader function
+    data_reader_fn = READER_STRATEGIES.get(config.data_reader_fn, None)
+    if data_reader_fn is None:
+        raise ValueError(
+            f'Invalid data reader function: {config.data_reader_fn}',
+        )
+
     # Set the static arguments of the worker function
     worker_fn = functools.partial(
         embed_file,
@@ -294,7 +325,7 @@ if __name__ == '__main__':
         model_id=config.model,
         batch_size=config.batch_size,
         num_data_workers=config.num_data_workers,
-        data_reader_fn=fasta_data_reader,
+        data_reader_fn=data_reader_fn,
         model_fn=get_esm_model,
     )
 
