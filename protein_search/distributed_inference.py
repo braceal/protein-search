@@ -255,10 +255,7 @@ READER_STRATEGIES = {
     'fasta': fasta_data_reader,
 }
 
-MODEL_STRATEGIES: dict[
-    str,
-    Callable[[str], tuple[PreTrainedModel, PreTrainedTokenizer]],
-] = {
+MODEL_STRATEGIES = {  # type: ignore[var-annotated]
     'esm': get_esm_model,
     'auto': get_auto_model,
 }
