@@ -23,8 +23,6 @@ from protein_search.utils import BaseModel
 
 # TODO: For big models, see here: https://huggingface.co/docs/accelerate/usage_guides/big_modeling
 # Documentation on using accelerate for inference: https://huggingface.co/docs/accelerate/usage_guides/distributed_inference
-# TODO: Skip the for loop over the sequence lengths using the attention mask:
-#   https://stackoverflow.com/questions/65083581/how-to-compute-mean-max-of-huggingface-transformers-bert-token-embeddings-with-a
 
 
 class InMemoryDataset(Dataset):
@@ -78,47 +76,8 @@ def compute_avg_embeddings(
     np.ndarray
         A numpy array of averaged hidden embeddings.
     """
-    import numpy as np
+    import torch
     from tqdm import tqdm
-
-    # TODO: Instead of using a list, store the embeddings in a torch tensor
-    # with the size reserved for the entire dataset.
-    embeddings = []
-    for batch in tqdm(dataloader):
-        inputs = batch.to(model.device)
-        outputs = model(**inputs, output_hidden_states=True)
-        last_hidden_states = outputs.hidden_states[-1]
-        seq_lengths = inputs.attention_mask.sum(axis=1)
-        for seq_len, elem in zip(seq_lengths, last_hidden_states):
-            # Compute averaged embedding
-            embedding = elem[1 : seq_len - 1, :].mean(dim=0).cpu().numpy()
-            embeddings.append(embedding)
-
-    return np.array(embeddings)
-
-
-@torch.no_grad()
-def compute_avg_embeddings_v2(
-    model: PreTrainedModel,
-    dataloader: DataLoader,
-) -> np.ndarray:
-    """Compute averaged hidden embeddings.
-
-    Parameters
-    ----------
-    model : PreTrainedModel
-        The model to use for inference.
-    dataloader : DataLoader
-        The dataloader to use for batching the data.
-
-    Returns
-    -------
-    np.ndarray
-        A numpy array of averaged hidden embeddings.
-    """
-    from tqdm import tqdm
-
-    device = model.device
 
     # Get the number of embeddings and the embedding size
     num_embeddings = len(dataloader.dataset)
@@ -128,39 +87,43 @@ def compute_avg_embeddings_v2(
     embeddings = torch.empty(
         (num_embeddings, embedding_size),
         dtype=model.dtype,
-        device=device,
     )
 
     # Index for storing embeddings
     idx = 0
 
-    # Iterate over batches
     for batch in tqdm(dataloader):
-        # Move batch to the device
-        batch = batch.to(device)  # noqa: PLW2901
+        # Move the batch to the model device
+        inputs = batch.to(model.device)
 
-        # Forward pass of the model
-        outputs = model(**batch, output_hidden_states=True)
+        # Get the model outputs with a forward pass
+        outputs = model(**inputs, output_hidden_states=True)
+
+        # Get the sequence lengths
+        seq_lengths = inputs.attention_mask.sum(axis=1)
+
+        # Set the attention mask to 0 for start and end tokens
+        inputs.attention_mask[:, 0] = 0
+        inputs.attention_mask[:, seq_lengths - 1] = 0
 
         # Get the last hidden states
-        hidden_states = outputs.hidden_states[-1]
+        last_hidden_state = outputs.hidden_states[-1]
 
-        # Compute mask for valid positions
-        mask = (
-            batch.attention_mask[:, 1:-1]
-            .unsqueeze(-1)
-            .expand_as(hidden_states)
-        )
+        # Get the hidden shape (B, SeqLen, HiddenDim) and batch size (B)
+        mask_shape = last_hidden_state.shape
+        batch_size = mask_shape[0]
 
-        # Sum over valid positions and divide by the number of valid positions
-        sum_embeddings = torch.sum(hidden_states[:, 1:-1, :] * mask, dim=1)
-
-        # Divide by the number of valid positions
-        avg_embeddings = sum_embeddings / mask.sum(dim=1).unsqueeze(-1)
-
-        # Move embeddings to CPU before storing
-        embeddings[idx : idx + batch.size(0), :] = avg_embeddings.cpu()
-        idx += batch.size(0)
+        # Create a mask for the pooling operation
+        pool_mask = inputs.attention_mask.unsqueeze(-1).expand(mask_shape)
+        # Sum the embeddings over the sequence length (use the mask to avoid
+        # pad, start, and stop tokens)
+        sum_embeds = torch.sum(last_hidden_state * pool_mask, 1)
+        # Avoid division by zero for zero length sequences by clamping
+        sum_mask = torch.clamp(pool_mask.sum(1), min=1e-9)
+        # Compute mean pooled embeddings for each sequence
+        embeddings[idx : idx + batch_size, :] = (sum_embeds / sum_mask).cpu()
+        # Increment the output buffer index by the batch size
+        idx += batch_size
 
     return embeddings.numpy()
 
