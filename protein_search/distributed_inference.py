@@ -57,6 +57,46 @@ class DataCollator:
         )
 
 
+def average_pool(
+    hidden_states: torch.Tensor,
+    attention_mask: torch.Tensor,
+) -> torch.Tensor:
+    """Average pool the hidden states using the attention mask.
+
+    Parameters
+    ----------
+    hidden_states : torch.Tensor
+        The hidden states to pool (B, SeqLen, HiddenDim).
+    attention_mask : torch.Tensor
+        The attention mask for the hidden states (B, SeqLen).
+
+    Returns
+    -------
+    torch.Tensor
+        The pooled embeddings (B, HiddenDim).
+    """
+    # Get the sequence lengths
+    seq_lengths = attention_mask.sum(axis=1)
+
+    # Set the attention mask to 0 for start and end tokens
+    attention_mask[:, 0] = 0
+    attention_mask[:, seq_lengths - 1] = 0
+
+    # Get the hidden shape (B, SeqLen, HiddenDim) and batch size (B)
+    mask_shape = hidden_states.shape
+    # batch_size = mask_shape[0]
+
+    # Create a mask for the pooling operation
+    pool_mask = attention_mask.unsqueeze(-1).expand(mask_shape)
+    # Sum the embeddings over the sequence length (use the mask to avoid
+    # pad, start, and stop tokens)
+    sum_embeds = torch.sum(hidden_states * pool_mask, 1)
+    # Avoid division by zero for zero length sequences by clamping
+    sum_mask = torch.clamp(pool_mask.sum(1), min=1e-9)
+    # Compute mean pooled embeddings for each sequence
+    return (sum_embeds / sum_mask).cpu()
+
+
 @torch.no_grad()
 def compute_avg_embeddings(
     model: PreTrainedModel,
@@ -79,6 +119,8 @@ def compute_avg_embeddings(
     import torch
     from tqdm import tqdm
 
+    from protein_search.distributed_inference import average_pool
+
     # Get the number of embeddings and the embedding size
     num_embeddings = len(dataloader.dataset)
     embedding_size = model.config.hidden_size
@@ -99,29 +141,18 @@ def compute_avg_embeddings(
         # Get the model outputs with a forward pass
         outputs = model(**inputs, output_hidden_states=True)
 
-        # Get the sequence lengths
-        seq_lengths = inputs.attention_mask.sum(axis=1)
-
-        # Set the attention mask to 0 for start and end tokens
-        inputs.attention_mask[:, 0] = 0
-        inputs.attention_mask[:, seq_lengths - 1] = 0
-
         # Get the last hidden states
         last_hidden_state = outputs.hidden_states[-1]
 
-        # Get the hidden shape (B, SeqLen, HiddenDim) and batch size (B)
-        mask_shape = last_hidden_state.shape
-        batch_size = mask_shape[0]
+        # Compute the average pooled embeddings
+        pooled_embeds = average_pool(last_hidden_state, inputs.attention_mask)
 
-        # Create a mask for the pooling operation
-        pool_mask = inputs.attention_mask.unsqueeze(-1).expand(mask_shape)
-        # Sum the embeddings over the sequence length (use the mask to avoid
-        # pad, start, and stop tokens)
-        sum_embeds = torch.sum(last_hidden_state * pool_mask, 1)
-        # Avoid division by zero for zero length sequences by clamping
-        sum_mask = torch.clamp(pool_mask.sum(1), min=1e-9)
-        # Compute mean pooled embeddings for each sequence
-        embeddings[idx : idx + batch_size, :] = (sum_embeds / sum_mask).cpu()
+        # Get the batch size
+        batch_size = inputs.attention_mask.shape[0]
+
+        # Store the pooled embeddings in the output buffer
+        embeddings[idx : idx + batch_size, :] = pooled_embeds
+
         # Increment the output buffer index by the batch size
         idx += batch_size
 
