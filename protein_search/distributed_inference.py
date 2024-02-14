@@ -332,7 +332,7 @@ class Config(BaseModel):
     # Inference batch size.
     batch_size: int = 8
     # Strategy for reading the input files.
-    data_reader_fn: str = 'fasta_data_reader'
+    data_reader_fn: str = 'fasta'
     # Strategy for initializing the model and tokenizer.
     embedding_model_fn: str = 'esm'
     # Settings for the parsl compute backend.
