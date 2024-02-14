@@ -106,18 +106,18 @@ def build_faiss_index(
 
 
 @app.command()
-def search(
+def search(  # noqa: PLR0913
     dataset_file: Path = typer.Option(  # noqa: B008
         ...,
         '--dataset_file',
         '-d',
         help='The path to the dataset file.',
     ),
-    query_sequence: str = typer.Option(
+    query_file: Path = typer.Option(  # noqa: B008
         ...,
-        '--query_sequence',
+        '--query_file',
         '-q',
-        help='The query sequence.',
+        help='The query sequence fasta file.',
     ),
     model_id: str = typer.Option(
         'facebook/esm2_t6_8M_UR50D',
@@ -131,46 +131,53 @@ def search(
         '-k',
         help='The number of top results to return.',
     ),
+    batch_size: int = typer.Option(
+        8,
+        '--batch_size',
+        '-b',
+        help='The batch size for computing embeddings of the query sequences.',
+    ),
+    num_data_workers: int = typer.Option(
+        4,
+        '--num_data_workers',
+        '-w',
+        help='The number of data workers to use for computing embeddings.',
+    ),
 ) -> None:
     """Search for similar sequences."""
-    import torch
     from datasets import Dataset
 
-    from protein_search.distributed_inference import average_pool
+    from protein_search.distributed_inference import embed_file
+    from protein_search.distributed_inference import fasta_data_reader
     from protein_search.distributed_inference import get_esm_model
 
     # Load the dataset from disk
     dataset = Dataset.load_from_disk(dataset_file.as_posix())
 
-    # Get the ESM model
-    model, tokenizer = get_esm_model(model_id)  # type: ignore[misc]
-
-    # Tokenize the query sequence
-    batch_encoding = tokenizer(query_sequence, return_tensors='pt')
-
-    # Get the query embedding
-    with torch.no_grad():
-        # Move the inputs to the device
-        inputs = batch_encoding.to(model.device)
-
-        # Get the model outputs with a forward pass
-        outputs = model(**inputs, output_hidden_states=True)
-
-        # Get the last hidden states
-        last_hidden_state = outputs.hidden_states[-1]
-
-        # Get the mean of the last hidden states
-        query_embedding = average_pool(
-            last_hidden_state,
-            inputs.attention_mask,
-        )
+    # Get the embeddings for the query sequences
+    query_embeddings = embed_file(
+        file=query_file,
+        model_id=model_id,
+        batch_size=batch_size,
+        num_data_workers=num_data_workers,
+        data_reader_fn=fasta_data_reader,
+        model_fn=get_esm_model,
+    )
 
     # Perform the search
-    scores, samples = dataset.get_nearest_examples(
-        'embeddings',
-        query_embedding,
-        k=top_k,
-    )
+    all_scores, all_samples = [], []
+    for query_embedding in query_embeddings:
+        scores, samples = dataset.get_nearest_examples(
+            'embeddings',
+            query_embedding,
+            k=top_k,
+        )
+        all_scores.append(scores)
+        all_samples.append(samples)
+
+    # Read the query sequences
+    # sequences = read_fasta(query_file)
+    # raw_sequences = [sequence.sequence for sequence in sequences]
 
     # Print the results
     for score, sample in zip(scores, samples):

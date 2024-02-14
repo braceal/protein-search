@@ -161,16 +161,14 @@ def compute_avg_embeddings(
 
 def embed_file(  # noqa: PLR0913
     file: Path,
-    output_dir: Path,
     model_id: str,
     batch_size: int,
     num_data_workers: int,
     data_reader_fn: Callable[[Path], list[str]],
     model_fn: Callable[[str], tuple[PreTrainedModel, PreTrainedTokenizer]],
-) -> None:
-    """Embed a single file and save a numpy array with embeddings."""
+) -> np.ndarray:
+    """Embed a single file and return a numpy array with embeddings."""
     # Imports are here since this function is called in a parsl process
-    import numpy as np
     from torch.utils.data import DataLoader
 
     from protein_search.distributed_inference import compute_avg_embeddings
@@ -193,11 +191,36 @@ def embed_file(  # noqa: PLR0913
     )
 
     # Compute averaged hidden embeddings
-    avg_embeddings = compute_avg_embeddings(model, dataloader)
+    return compute_avg_embeddings(model, dataloader)
 
-    # Save or use the averaged embeddings as needed
-    # For example, you can save the embeddings to a file
-    np.save(output_dir / f'{file.name}-embeddings.npy', avg_embeddings)
+
+def embed_and_save_file(  # noqa: PLR0913
+    file: Path,
+    output_dir: Path,
+    model_id: str,
+    batch_size: int,
+    num_data_workers: int,
+    data_reader_fn: Callable[[Path], list[str]],
+    model_fn: Callable[[str], tuple[PreTrainedModel, PreTrainedTokenizer]],
+) -> None:
+    """Embed a single file and save a numpy array with embeddings."""
+    # Imports are here since this function is called in a parsl process
+    import numpy as np
+
+    from protein_search.distributed_inference import embed_file
+
+    # Embed the file
+    embeddings = embed_file(
+        file=file,
+        model_id=model_id,
+        batch_size=batch_size,
+        num_data_workers=num_data_workers,
+        data_reader_fn=data_reader_fn,
+        model_fn=model_fn,
+    )
+
+    # Save the embeddings to disk
+    np.save(output_dir / f'{file.name}-embeddings.npy', embeddings)
 
 
 @register()  # type: ignore[arg-type]
@@ -352,7 +375,7 @@ if __name__ == '__main__':
 
     # Set the static arguments of the worker function
     worker_fn = functools.partial(
-        embed_file,
+        embed_and_save_file,
         output_dir=config.output_dir,
         model_id=config.model,
         batch_size=config.batch_size,
