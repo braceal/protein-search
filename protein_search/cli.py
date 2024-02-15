@@ -46,11 +46,11 @@ def build_faiss_index(
         help='The directory containing the embeddings .npy files '
         '(with the same name as FASTA files).',
     ),
-    output_dataset_file: Path = typer.Option(  # noqa: B008
+    dataset_dir: Path = typer.Option(  # noqa: B008
         ...,
-        '--output_dataset_file',
+        '--dataset_dir',
         '-o',
-        help='The path of the output dataset file to write.',
+        help='The path of the output dataset directory to write.',
     ),
     pattern: str = typer.Option(
         '*.fasta',
@@ -77,7 +77,7 @@ def build_faiss_index(
             embeddings = np.load(embedding_file)
             # Yield the sequences and embeddings for the given data files
             for sequence, embedding in zip(sequences, embeddings):
-                yield {'tag': sequence.tag, 'embedding': embedding}
+                yield {'tags': sequence.tag, 'embeddings': embedding}
 
     # Get the list of FASTA and embedding files
     # Note: We are assuming that the fasta and embedding
@@ -102,14 +102,14 @@ def build_faiss_index(
     )
 
     # Save the dataset to disk
-    dataset.save_to_disk(output_dataset_file)
+    dataset.save_to_disk(dataset_dir)
 
 
 @app.command()
 def search(  # noqa: PLR0913
-    dataset_file: Path = typer.Option(  # noqa: B008
+    dataset_dir: Path = typer.Option(  # noqa: B008
         ...,
-        '--dataset_file',
+        '--dataset_dir',
         '-d',
         help='The path to the dataset file.',
     ),
@@ -152,7 +152,7 @@ def search(  # noqa: PLR0913
     from protein_search.distributed_inference import get_esm_model
 
     # Load the dataset from disk
-    dataset = Dataset.load_from_disk(dataset_file.as_posix())
+    dataset = Dataset.load_from_disk(dataset_dir.as_posix())
 
     # Get the embeddings for the query sequences
     query_embeddings = embed_file(
