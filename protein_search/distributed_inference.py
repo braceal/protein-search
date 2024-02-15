@@ -221,7 +221,7 @@ def embed_and_save_file(  # noqa: PLR0913
     )
 
     # Save the embeddings to disk
-    np.save(output_dir / f'{file.name}-embeddings.npy', embeddings)
+    np.save(output_dir / f'{file.stem}.npy', embeddings)
 
 
 @register()  # type: ignore[arg-type]
