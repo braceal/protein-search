@@ -360,8 +360,11 @@ if __name__ == '__main__':
     # Load the configuration
     config = Config.from_yaml(args.config)
 
+    # Create a directory for the embeddings
+    embedding_dir = config.output_dir / 'embeddings'
+
     # Make the output directory
-    config.output_dir.mkdir(exist_ok=True)
+    embedding_dir.mkdir(parents=True, exist_ok=True)
 
     # Log the configuration
     config.write_yaml(config.output_dir / 'config.yaml')
@@ -383,7 +386,7 @@ if __name__ == '__main__':
     # Set the static arguments of the worker function
     worker_fn = functools.partial(
         embed_and_save_file,
-        output_dir=config.output_dir,
+        output_dir=embedding_dir,
         model_id=config.model,
         batch_size=config.batch_size,
         num_data_workers=config.num_data_workers,
