@@ -11,6 +11,7 @@ import numpy as np
 import torch
 from parsl.concurrent import ParslPoolExecutor
 from pydantic import Field
+from pydantic import field_validator
 from torch.utils.data import DataLoader
 from torch.utils.data import Dataset
 from transformers import BatchEncoding
@@ -337,6 +338,12 @@ class Config(BaseModel):
     embedding_model_fn: str = 'esm'
     # Settings for the parsl compute backend.
     compute_settings: ComputeSettingsTypes
+
+    @field_validator('input_dir', 'output_dir')
+    @classmethod
+    def resolve_path(cls, value: Path) -> Path:
+        """Resolve the path to an absolute path."""
+        return value.resolve()
 
 
 if __name__ == '__main__':
