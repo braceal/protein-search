@@ -6,6 +6,7 @@ from typing import Iterator
 
 import faiss
 import numpy as np
+import torch
 from datasets import Dataset
 from datasets.search import BatchedSearchResults
 
@@ -231,6 +232,7 @@ class SimilaritySearch:
             k=top_k,
         )
 
+    @torch.no_grad()
     def get_pooled_embeddings(
         self,
         query_sequence: str | list[str],
