@@ -31,7 +31,7 @@ def download_dataset(
 
 
 @app.command()
-def build_faiss_index(
+def build_index(
     fasta_dir: Path = typer.Option(  # noqa: B008
         ...,
         '--fasta_dir',
@@ -70,7 +70,7 @@ def build_faiss_index(
 
 
 @app.command()
-def search(
+def search_index(
     dataset_dir: Path = typer.Option(  # noqa: B008
         ...,
         '--dataset_dir',
