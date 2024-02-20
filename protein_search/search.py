@@ -2,15 +2,15 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any
 from typing import Iterator
 
 import faiss
 import numpy as np
 from datasets import Dataset
+from datasets.search import BatchedSearchResults
 
 from protein_search.distributed_inference import average_pool
-from protein_search.embedders import get_embedder
+from protein_search.embedders import BaseEmbedder
 from protein_search.utils import read_fasta
 
 
@@ -165,7 +165,7 @@ class SimilaritySearch:
     def __init__(
         self,
         dataset_dir: Path,
-        embedder_kwargs: dict[str, Any],
+        embedder: BaseEmbedder,
         faiss_index_file: Path | None = None,
         faiss_index_name: str = 'embeddings',
     ) -> None:
@@ -197,48 +197,50 @@ class SimilaritySearch:
         self.dataset.load_faiss_index(self.faiss_index_name, faiss_index_file)
 
         # Load the model once for generating the embeddings
-        self.embedder = get_embedder(**embedder_kwargs)
+        self.embedder = embedder
 
     def search(
         self,
-        query_sequences: list[str],
+        query_sequence: str | list[str],
         top_k: int = 5,
-    ) -> tuple[list[list[float]], list[list[int]]]:
+    ) -> BatchedSearchResults:
         """Search for similar sequences.
 
         Parameters
         ----------
-        query_sequences : list[str]
-            The list of query sequences.
+        query_sequence : str | list[str]
+            The single query sequence or list of query sequences.
         top_k : int
             The number of top results to return.
 
         Returns
         -------
-        tuple[list[list[float]], list[list[int]]]
-            The total scores and indices of the top k similar sequences
+        BatchedSearchResults:
+            A namedtuple with list[list[float]] (.total_scores) of scores for
+            each  of the top_k returned items and a list[list[int]]]
+            (.total_indices) of indices for each of the top_k returned items
             for each query sequence.
         """
         # Embed the query sequences
-        query_embeddings = self.get_pooled_embeddings(query_sequences)
+        query_embeddings = self.get_pooled_embeddings(query_sequence)
 
         # Search the dataset for the top k similar sequences
-        out = self.dataset.search_batch(
+        return self.dataset.search_batch(
             index_name=self.faiss_index_name,
             queries=query_embeddings,
             k=top_k,
         )
 
-        # Return the total scores and indices
-        return out.total_scores, out.total_indices
-
-    def get_pooled_embeddings(self, query_sequences: list[str]) -> np.ndarray:
+    def get_pooled_embeddings(
+        self,
+        query_sequence: str | list[str],
+    ) -> np.ndarray:
         """Get the embeddings for the query sequences.
 
         Parameters
         ----------
-        query_sequences : list[str]
-            The list of query sequences.
+        query_sequence : str | list[str]
+            The single query sequence or list of query sequences.
 
         Returns
         -------
@@ -246,9 +248,13 @@ class SimilaritySearch:
             The embeddings of the query sequences
             (shape: [num_sequences, embedding_size])
         """
+        # Convert the query sequence to a list if it is a single sequence
+        if isinstance(query_sequence, str):
+            query_sequence = [query_sequence]
+
         # Tokenize the query sequences
         batch_encoding = self.embedder.tokenizer(
-            query_sequences,
+            query_sequence,
             padding=True,
             truncation=True,
             return_tensors='pt',
@@ -268,17 +274,17 @@ class SimilaritySearch:
 
         return pool_embeds
 
-    def get_sequences(self, indices: list[int]) -> list[str]:
-        """Get the sequences for the given indices.
+    def get_sequence_tags(self, indices: list[int]) -> list[str]:
+        """Get the sequence tags for the given indices.
 
         Parameters
         ----------
         indices : list[int]
-            The list of indices.
+            The list of indices returned from the search.
 
         Returns
         -------
         list[str]
-            The list of sequences.
+            The list of sequence tags.
         """
         return self.dataset['tags'][indices].tolist()

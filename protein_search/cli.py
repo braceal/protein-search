@@ -120,11 +120,12 @@ def search(
     # for score, ind in zip(total_scores, total_indices):
     #     print(score, ind)
 
+    from protein_search.embedders import get_embedder
     from protein_search.search import SimilaritySearch
     from protein_search.utils import read_fasta
 
-    ss = SimilaritySearch(
-        dataset_dir=dataset_dir,
+    # Initialize the embedder to use for similarity search
+    embedder = get_embedder(
         embedder_kwargs={
             # The name of the model architecture to use
             'name': model_name,
@@ -141,16 +142,19 @@ def search(
         },
     )
 
+    # Initialize the similarity search
+    ss = SimilaritySearch(dataset_dir=dataset_dir, embedder=embedder)
+
     # Read the input query file
     query_sequences = [seq.sequence for seq in read_fasta(query_file)]
 
     # Search for similar sequences
-    total_scores, total_indices = ss.search(query_sequences, top_k=top_k)
+    results = ss.search(query_sequences, top_k=top_k)
 
     # Print the results
-    for score, ind in zip(total_scores, total_indices):
+    for score, ind in zip(results.total_scores, results.total_indices):
         # Get the sequence tags found by the search
-        found_tags = ss.get_sequences(ind)
+        found_tags = ss.get_sequence_tags(ind)
         print(score, ind, found_tags)
 
 
