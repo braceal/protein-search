@@ -17,7 +17,7 @@ class AutoEmbedderConfig(BaseEmbedderConfig):
     # The name of the embedder
     name: Literal['auto'] = 'auto'  # type: ignore[assignment]
     # The model id
-    model_id: str
+    pretrained_model_name_or_path: str
     # Use the model in half precision
     half_precision: bool = True
     # Set the model to evaluation mode
@@ -37,12 +37,12 @@ class AutoEmbedder(BaseEmbedder):
 
         # Load model and tokenizer
         model = AutoModel.from_pretrained(
-            config.model_id,
+            config.pretrained_model_name_or_path,
             deterministic_eval=True,
             trust_remote_code=True,
         )
         tokenizer = AutoTokenizer.from_pretrained(
-            config.model_id,
+            config.pretrained_model_name_or_path,
             trust_remote_code=True,
         )
 

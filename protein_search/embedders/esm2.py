@@ -17,7 +17,7 @@ class Esm2EmbedderConfig(BaseEmbedderConfig):
     # The name of the embedder
     name: Literal['esm2'] = 'esm2'  # type: ignore[assignment]
     # The model id
-    model_id: str = 'facebook/esm2_t6_8M_UR50D'
+    pretrained_model_name_or_path: str = 'facebook/esm2_t6_8M_UR50D'
     # Use the model in half precision
     half_precision: bool = True
     # Set the model to evaluation mode
@@ -36,8 +36,12 @@ class Esm2Embedder(BaseEmbedder):
         from transformers import EsmTokenizer
 
         # Load model and tokenizer
-        tokenizer = EsmTokenizer.from_pretrained(config.model_id)
-        model = EsmForMaskedLM.from_pretrained(config.model_id)
+        model = EsmForMaskedLM.from_pretrained(
+            config.pretrained_model_name_or_path,
+        )
+        tokenizer = EsmTokenizer.from_pretrained(
+            config.pretrained_model_name_or_path,
+        )
 
         # Convert the model to half precision
         if config.half_precision:

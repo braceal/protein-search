@@ -83,9 +83,9 @@ def search(
         '-q',
         help='The query sequence fasta file.',
     ),
-    model_id: str = typer.Option(
+    pretrained_model_name_or_path: str = typer.Option(
         'facebook/esm2_t6_8M_UR50D',
-        '--model_id',
+        '--pretrained_model_name_or_path',
         '-m',
         help='The model weights to use for generating the embeddings.',
     ),
@@ -130,7 +130,7 @@ def search(
             # The name of the model architecture to use
             'name': model_name,
             # The model id to use for generating the embeddings
-            'model_id': model_id,
+            'pretrained_model_name_or_path': pretrained_model_name_or_path,
             # Use the model in half precision
             'half_precision': True,
             # Set the model to evaluation mode
