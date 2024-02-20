@@ -8,6 +8,6 @@ embedder_config:
   name: esm2
   pretrained_model_name_or_path: facebook/esm2_t6_8M_UR50D
 
-compute_settings:
+compute_config:
   name: workstation
   available_accelerators: ["0"]
