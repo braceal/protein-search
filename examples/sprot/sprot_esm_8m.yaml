@@ -10,7 +10,7 @@ embedder_config:
 
 compute_config:
   name: polaris
-  num_nodes: 2
+  num_nodes: 1
   worker_init: "module load conda/2023-10-04; conda activate protein-search; export HF_HOME=/lus/eagle/projects/CVD-Mol-AI/braceal/.cache/"
   scheduler_options: "#PBS -l filesystems=home:eagle:grand"
   account: FoundEpidem
