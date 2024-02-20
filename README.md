@@ -14,7 +14,15 @@ pip install faiss-gpu==1.7.2
 ## Usage
 
 ### CATH Example
-First download the CATH database from the following link: [CATH](http://download.cathdb.info/cath/releases/latest-release/cath-classification-data/cath-domain-list-file.txt)
+We provide an example of how to use the package to search the CATH database.
+For convenience, we provide a pre-built index and embeddings for the CATH database.
+To use the pre-built index and embeddings, please skip to the `protein-search search-index` command.
+
+
+First download the CATH database, run the following command:
+```bash
+protein-search download-dataset --dataset cath --output_dir data/cath
+```
 
 Then to create embeddings, run the following command:
 ```bash
