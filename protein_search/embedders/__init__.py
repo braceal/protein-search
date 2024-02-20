@@ -60,7 +60,7 @@ def get_embedder(
 
     # Make a function to combine the config and embedder initialization
     # since the registry only accepts functions with hashable arguments.
-    def embedder_factory(embedder_kwargs: dict[str, Any]) -> EmbedderTypes:
+    def embedder_factory(**embedder_kwargs: dict[str, Any]) -> EmbedderTypes:
         # Create the embedder config
         config = config_cls(**embedder_kwargs)
         # Create the embedder instance
@@ -69,8 +69,8 @@ def get_embedder(
     # Register the embedder
     if register:
         registry.register(embedder_factory)
-        embedder = registry.get(embedder_factory, embedder_kwargs)
+        embedder = registry.get(embedder_factory, **embedder_kwargs)
     else:
-        embedder = embedder_factory(embedder_kwargs)
+        embedder = embedder_factory(**embedder_kwargs)
 
     return embedder
