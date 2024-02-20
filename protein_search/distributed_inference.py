@@ -175,7 +175,7 @@ def embed_file(
     from protein_search.embedders import get_embedder
 
     # Initialize the model and tokenizer
-    embedder: EmbedderTypes = get_embedder(**embedder_kwargs)
+    embedder: EmbedderTypes = get_embedder(**embedder_kwargs, register=True)
 
     # Read the data
     data = data_reader_fn(file)
