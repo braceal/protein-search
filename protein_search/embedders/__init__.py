@@ -57,25 +57,20 @@ def get_embedder(
 
     # Unpack the embedder strategy
     config_cls, embedder_cls = embedder_strategy
-    # Create the embedder config
-    config = config_cls(**embedder_kwargs)
+
+    # Make a function to combine the config and embedder initialization
+    # since the registry only accepts functions with hashable arguments.
+    def embedder_factory(embedder_kwargs: dict[str, Any]) -> EmbedderTypes:
+        # Create the embedder config
+        config = config_cls(**embedder_kwargs)
+        # Create the embedder instance
+        return embedder_cls(config)
 
     # Register the embedder
     if register:
-        registry.register(embedder_cls)
-        embedder = registry.get(embedder_cls, config)
+        registry.register(embedder_factory)
+        embedder = registry.get(embedder_factory, embedder_kwargs)
     else:
-        embedder = embedder_cls(config)
+        embedder = embedder_factory(embedder_kwargs)
 
-    return embedder  # type: ignore[return-value]
-
-    # if name == 'esm2':
-    #     from protein_search.embedders.esm2 import Esm2Embedder
-
-    #     return Esm2Embedder(Esm2EmbedderConfig(**embedder_kwargs))
-    # elif name == 'auto':
-    #     from protein_search.embedders.auto import AutoEmbedder
-
-    #     return AutoEmbedder(AutoEmbedderConfig(**embedder_kwargs))
-    # else:
-    #     raise ValueError(f'Unknown embedder name: {name}')
+    return embedder
