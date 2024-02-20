@@ -66,7 +66,7 @@ def get_embedder(
         # Create the embedder instance
         return embedder_cls(config)
 
-    # Register the embedder
+    # Register and create the embedder instance
     if register:
         registry.register(embedder_factory)
         embedder = registry.get(embedder_factory, **embedder_kwargs)
