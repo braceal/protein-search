@@ -101,65 +101,6 @@ def build_faiss_index(
     dataset.save_to_disk(dataset_dir)
 
 
-# def search(
-#     dataset_dir: Path,
-#     query_file: Path,
-#     model_id: str,
-#     top_k: int = 5,
-#     batch_size: int = 8,
-#     num_data_workers: int = 4,
-# ) -> tuple[list[list[float]], list[list[int]]]:
-#     """Search for similar sequences.
-
-#     Parameters
-#     ----------
-#     dataset_dir : Path
-#         The path to the dataset directory.
-#     query_file : Path
-#         The query sequence fasta file.
-#     model_id : str
-#         The model to use for generating the embeddings.
-#     top_k : int
-#         The number of top results to return.
-#     batch_size : int
-#         The batch size for computing embeddings of the query sequences.
-#     num_data_workers : int
-#         The number of data workers to use for computing embeddings.
-
-#     Returns
-#     -------
-#     tuple[list[list[float]], list[list[int]]]
-#         The total scores and indices of the top k similar sequences
-#         for each query sequence.
-#     """
-#     # Load the dataset from disk
-#     dataset = Dataset.load_from_disk(dataset_dir)
-#     dataset.load_faiss_index('embeddings', dataset_dir.with_suffix('.index'))
-
-#     # Get the embeddings for the query sequences
-#     query_embeddings = embed_file(
-#         file=query_file,
-#         model_id=model_id,
-#         batch_size=batch_size,
-#         num_data_workers=num_data_workers,
-#         data_reader_fn=fasta_data_reader,
-#         model_fn=get_esm_model,
-#     )
-
-#     # Convert the query embeddings to float32 for FAISS
-#     query_embeddings = query_embeddings.astype(np.float32)
-
-#     # Search the dataset for the top k similar sequences
-#     out = dataset.search_batch(
-#         index_name='embeddings',
-#         queries=query_embeddings,
-#         k=top_k,
-#     )
-
-#     # Return the total scores and indices
-#     return out.total_scores, out.total_indices
-
-
 class SimilaritySearch:
     """Similarity search class for searching similar sequences in a dataset."""
 
@@ -203,7 +144,7 @@ class SimilaritySearch:
     def search(
         self,
         query_sequence: str | list[str],
-        top_k: int = 5,
+        top_k: int = 1,
     ) -> BatchedSearchResults:
         """Search for similar sequences.
 
@@ -212,7 +153,7 @@ class SimilaritySearch:
         query_sequence : str | list[str]
             The single query sequence or list of query sequences.
         top_k : int
-            The number of top results to return.
+            The number of top results to return, by default 1.
 
         Returns
         -------

@@ -97,29 +97,13 @@ def search(
         ' generating the embeddings.',
     ),
     top_k: int = typer.Option(
-        5,
+        1,
         '--top_k',
         '-k',
         help='The number of top results to return.',
     ),
 ) -> None:
     """Search for similar sequences."""
-    # from protein_search.search import search
-
-    # # Search for similar sequences
-    # total_scores, total_indices = search(
-    #     dataset_dir=dataset_dir,
-    #     query_file=query_file,
-    #     model_id=model_id,
-    #     top_k=top_k,
-    #     batch_size=batch_size,
-    #     num_data_workers=num_data_workers,
-    # )
-
-    # # Print the results
-    # for score, ind in zip(total_scores, total_indices):
-    #     print(score, ind)
-
     from protein_search.embedders import get_embedder
     from protein_search.search import SimilaritySearch
     from protein_search.utils import read_fasta
