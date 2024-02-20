@@ -1,0 +1,22 @@
+input_dir: /lus/eagle/projects/CVD-Mol-AI/braceal/src/protein-search/data/cath
+output_dir: /lus/eagle/projects/CVD-Mol-AI/braceal/src/protein-search/examples/cath/cath_esm_8m_embeddings
+glob_patterns:
+- '*.fasta'
+num_data_workers: 1
+batch_size: 128
+data_reader_fn: fasta
+embedder_config:
+    name: esm2
+    pretrained_model_name_or_path: facebook/esm2_t6_8M_UR50D
+    half_precision: true
+    eval_mode: true
+    compile_model: true
+compute_config:
+    name: workstation
+    available_accelerators:
+    - '0'
+    worker_port_range:
+    - 10000
+    - 20000
+    retries: 1
+    label: htex
