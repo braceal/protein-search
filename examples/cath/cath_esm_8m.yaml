@@ -1,9 +1,13 @@
 input_dir: data/cath
 output_dir: examples/cath/cath_esm_8m_embeddings
 glob_patterns: ['*.fasta']
-model: facebook/esm2_t6_8M_UR50D
 num_data_workers: 1
 batch_size: 128
+
+embedder_config:
+  name: esm
+  pretrained_model_name_or_path: facebook/esm2_t6_8M_UR50D
+
 compute_settings:
   name: workstation
   available_accelerators: ["0"]

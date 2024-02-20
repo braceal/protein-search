@@ -24,8 +24,8 @@ from protein_search.utils import BaseModel
 from protein_search.utils import PathLike
 
 
-class BaseComputeSettings(BaseModel, ABC):
-    """Compute settings (HPC platform, number of GPUs, etc)."""
+class BaseComputeConfig(BaseModel, ABC):
+    """Compute configuration (HPC platform, number of GPUs, etc)."""
 
     name: Literal[''] = ''
     """Name of the platform to use."""
@@ -47,8 +47,8 @@ class BaseComputeSettings(BaseModel, ABC):
         ...
 
 
-class LocalSettings(BaseComputeSettings):
-    """Settings for a local machine (mainly for testing purposes)."""
+class LocalConfig(BaseComputeConfig):
+    """Configuration for a local machine (mainly for testing purposes)."""
 
     name: Literal['local'] = 'local'  # type: ignore[assignment]
     max_workers: int = 1
@@ -74,8 +74,8 @@ class LocalSettings(BaseComputeSettings):
         )
 
 
-class WorkstationSettings(BaseComputeSettings):
-    """Settings for a workstation with GPUs."""
+class WorkstationConfig(BaseComputeConfig):
+    """Configuration for a workstation with GPUs."""
 
     name: Literal['workstation'] = 'workstation'  # type: ignore[assignment]
     """Name of the platform."""
@@ -104,8 +104,8 @@ class WorkstationSettings(BaseComputeSettings):
         )
 
 
-class PolarisSettings(BaseComputeSettings):
-    """Polaris@ALCF settings.
+class PolarisConfig(BaseComputeConfig):
+    """Polaris@ALCF configuration.
 
     See here for details: https://docs.alcf.anl.gov/polaris/workflows/parsl/
     """
@@ -185,8 +185,8 @@ class PolarisSettings(BaseComputeSettings):
         )
 
 
-ComputeSettingsTypes = Union[
-    LocalSettings,
-    WorkstationSettings,
-    PolarisSettings,
+ComputeConfigTypes = Union[
+    LocalConfig,
+    WorkstationConfig,
+    PolarisConfig,
 ]

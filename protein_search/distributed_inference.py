@@ -20,7 +20,7 @@ from transformers import PreTrainedTokenizer
 
 from protein_search.embedders import BaseEmbedder
 from protein_search.embedders import EmbedderConfigTypes
-from protein_search.parsl import ComputeSettingsTypes
+from protein_search.parsl import ComputeConfigTypes
 from protein_search.utils import BaseModel
 
 # TODO: For big models, see here: https://huggingface.co/docs/accelerate/usage_guides/big_modeling
@@ -258,8 +258,6 @@ class Config(BaseModel):
     output_dir: Path
     # A set of glob patterns to match the input files.
     glob_patterns: list[str] = Field(default=['*'])
-    # Model name or path.
-    model: str = 'facebook/esm2_t6_8M_UR50D'
     # Number of data workers for batching.
     num_data_workers: int = 4
     # Inference batch size.
@@ -267,9 +265,9 @@ class Config(BaseModel):
     # Strategy for reading the input files.
     data_reader_fn: str = 'fasta'
     # Settings for the embedder.
-    embedder_settings: EmbedderConfigTypes
+    embedder_config: EmbedderConfigTypes
     # Settings for the parsl compute backend.
-    compute_settings: ComputeSettingsTypes
+    compute_config: ComputeConfigTypes
 
     @field_validator('input_dir', 'output_dir')
     @classmethod
@@ -315,7 +313,7 @@ if __name__ == '__main__':
         batch_size=config.batch_size,
         num_data_workers=config.num_data_workers,
         data_reader_fn=data_reader_fn,
-        embedder_kwargs=config.embedder_settings.model_dump(),
+        embedder_kwargs=config.embedder_config.model_dump(),
     )
 
     # Collect all input files
@@ -324,7 +322,7 @@ if __name__ == '__main__':
         input_files.extend(list(config.input_dir.glob(pattern)))
 
     # Set the parsl compute settings
-    parsl_config = config.compute_settings.get_config(
+    parsl_config = config.compute_config.get_config(
         config.output_dir / 'parsl',
     )
 

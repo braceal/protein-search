@@ -1,0 +1,18 @@
+input_dir: data/cath
+output_dir: examples/cath/cath_esm_8m_embeddings
+glob_patterns: ['*.fasta']
+num_data_workers: 1
+batch_size: 128
+
+embedder_config:
+  name: esm
+  pretrained_model_name_or_path: facebook/esm2_t6_8M_UR50D
+
+compute_config:
+  name: polaris
+  num_nodes: 1
+  worker_init: "module load conda/2023-10-04; conda activate protein-search; export HF_HOME=/lus/eagle/projects/CVD-Mol-AI/braceal/.cache/"
+  scheduler_options: "#PBS -l filesystems=home:eagle:grand"
+  account: FoundEpidem
+  queue: debug
+  walltime: 01:00:00
