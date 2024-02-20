@@ -289,4 +289,4 @@ class SimilaritySearch:
         list[str]
             The list of sequence tags.
         """
-        return self.dataset['tags'][indices].tolist()
+        return [self.dataset['tags'][i] for i in indices]
