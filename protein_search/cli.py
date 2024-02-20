@@ -139,7 +139,7 @@ def search_index(
     for score, ind in zip(results.total_scores, results.total_indices):
         # Get the sequence tags found by the search
         found_tags = ss.get_sequence_tags(ind)
-        print(score, ind, found_tags)
+        print(f'scores: {score}, indices: {ind}, tags: {found_tags}')
 
 
 def main() -> None:
