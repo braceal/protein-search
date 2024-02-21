@@ -45,6 +45,35 @@ scores: [0.01191352], indices: [0], tags: ['cath|4_2_0|12asA00/4-330']
 scores: [0.03016754], indices: [1], tags: ['cath|4_2_0|132lA00/2-129']
 ```
 
+### Swiss-Prot Example
+This example demonstrates how to use the package to search the Swiss-Prot database.
+
+A copy of the dataset is located on Polaris@ALCF here:
+```bash
+/lus/eagle/projects/FoundEpidem/braceal/projects/kbase-protein-search/data/sprot
+```
+
+Then to create embeddings, run the following command:
+```bash
+nohup python -m protein_search.distributed_inference --config examples/sprot/sprot_esm_8m.yaml &> nohup.out &
+```
+
+To build the search index, run the following command:
+```bash
+protein-search build-index --fasta_dir /lus/eagle/projects/FoundEpidem/braceal/projects/kbase-protein-search/data/sprot --embedding_dir examples/sprot/sprot_esm_8m_embeddings/embeddings --dataset_dir examples/sprot/sprot_esm_8m_faiss
+```
+
+To search the index, run the following command:
+```bash
+protein-search search-index --dataset_dir examples/sprot/sprot_esm_8m_faiss --query_file examples/sprot/faiss-test-sprot.fasta --top_k 1
+```
+
+Which should output the following:
+```console
+scores: [0.00508352], indices: [467483], tags: ['Q5HAN0']
+scores: [0.01382443], indices: [467484], tags: ['Q5AYI7']
+```
+
 ### Converting Uniprot XML to FASTA
 To process the sprot XML files into FASTA files, run the following command (on lambda10):
 ```bash
