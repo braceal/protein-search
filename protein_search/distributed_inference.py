@@ -84,17 +84,16 @@ def average_pool(
     attention_mask[:, 0] = 0
     attention_mask[:, seq_lengths - 1] = 0
 
-    # Get the hidden shape (B, SeqLen, HiddenDim) and batch size (B)
-    mask_shape = embeddings.shape
-    # batch_size = mask_shape[0]
+    # Create a mask for the pooling operation (B, SeqLen, HiddenDim)
+    pool_mask = attention_mask.unsqueeze(-1).expand(embeddings.shape)
 
-    # Create a mask for the pooling operation
-    pool_mask = attention_mask.unsqueeze(-1).expand(mask_shape)
     # Sum the embeddings over the sequence length (use the mask to avoid
     # pad, start, and stop tokens)
     sum_embeds = torch.sum(embeddings * pool_mask, 1)
+
     # Avoid division by zero for zero length sequences by clamping
     sum_mask = torch.clamp(pool_mask.sum(1), min=1e-9)
+
     # Compute mean pooled embeddings for each sequence
     return sum_embeds / sum_mask
 
@@ -126,7 +125,7 @@ def compute_avg_embeddings(
     # Get the number of embeddings and the embedding size
     num_embeddings = len(dataloader.dataset)
 
-    # Initialize a torch tensor for storing embeddings on the GPU
+    # Initialize a torch tensor for storing embeddings in host memory
     all_embeddings = torch.empty(
         (num_embeddings, embedder.embedding_size),
         dtype=embedder.dtype,
