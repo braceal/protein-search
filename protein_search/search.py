@@ -271,4 +271,19 @@ class SimilaritySearch:
         list[str]
             The list of sequence tags.
         """
-        return [self.dataset['tags'][i] for i in indices]
+        return [self.dataset[i]['tags'] for i in indices]
+
+    def get_sequence_embeddings(self, indices: list[int]) -> np.ndarray:
+        """Get the sequence embeddings for the given indices.
+
+        Parameters
+        ----------
+        indices : list[int]
+            The list of indices returned from the search.
+
+        Returns
+        -------
+        np.ndarray
+            Array of sequence embeddings (shape: [num_sequences, embed_size])
+        """
+        return np.array([self.dataset[i]['embeddings'] for i in indices])
