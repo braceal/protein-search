@@ -204,11 +204,19 @@ class SimilaritySearch:
             query_embedding = self.get_pooled_embeddings(query_sequence)
 
         # Search the dataset for the top k similar sequences
-        return self.dataset.search_batch(
+        results = self.dataset.search_batch(
             index_name=self.faiss_index_name,
             queries=query_embedding,
             k=top_k,
         )
+
+        # Assure that the results are pure floats, ints and not numpy types
+        results = BatchedSearchResults(
+            total_scores=results.total_scores.tolist(),
+            total_indices=results.total_indices.tolist(),
+        )
+
+        return results
 
     @torch.no_grad()
     def get_pooled_embeddings(
