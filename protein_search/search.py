@@ -46,7 +46,8 @@ def generate_dataset(
 
         if metric == 'inner_product':
             # Normalize the embeddings for inner product search
-            # to make the cosine similarity equivalent to inner product
+            # to make the cosine similarity equivalent to inner product. See:
+            # https://github.com/facebookresearch/faiss/wiki/MetricType-and-distances
             faiss.normalize_L2(embeddings)
 
         # Yield the sequences and embeddings for the given data files
