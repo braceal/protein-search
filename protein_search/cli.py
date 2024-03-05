@@ -156,7 +156,11 @@ def search_index(  # noqa: PLR0913
     for score, ind in zip(results.total_scores, results.total_indices):
         # Get the sequence tags found by the search
         found_tags = ss.get_sequence_tags(ind)
-        print(f'scores: {score}, indices: {ind}, tags: {found_tags}')
+        embeddings = ss.get_sequence_embeddings(ind)
+        print(
+            f'scores: {score}, indices: {ind}, tags: {found_tags}, '
+            f'embeddings: {embeddings.shape}',
+        )
 
 
 def main() -> None:
