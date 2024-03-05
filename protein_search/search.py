@@ -143,7 +143,8 @@ class SimilaritySearch:
 
     def search(
         self,
-        query_sequence: str | list[str],
+        query_sequence: str | list[str] | None = None,
+        query_embedding: np.ndarray | None = None,
         top_k: int = 1,
     ) -> BatchedSearchResults:
         """Search for similar sequences.
@@ -162,14 +163,27 @@ class SimilaritySearch:
             each  of the top_k returned items and a list[list[int]]]
             (.total_indices) of indices for each of the top_k returned items
             for each query sequence.
+
+        Raises
+        ------
+        ValueError
+            If both query_sequence and query_embedding are None.
         """
+        # Check whether arguments are valid
+        if query_sequence is None and query_embedding is None:
+            raise ValueError(
+                'Provide at least one of query_sequence or query_embedding.',
+            )
+
         # Embed the query sequences
-        query_embeddings = self.get_pooled_embeddings(query_sequence)
+        if query_embedding is None:
+            assert query_sequence is not None
+            query_embedding = self.get_pooled_embeddings(query_sequence)
 
         # Search the dataset for the top k similar sequences
         return self.dataset.search_batch(
             index_name=self.faiss_index_name,
-            queries=query_embeddings,
+            queries=query_embedding,
             k=top_k,
         )
 

@@ -17,10 +17,27 @@ EmbedderTypes = Esm2Embedder | AutoEmbedder
 
 _EmbedderTypes = tuple[type[EmbedderConfigTypes], type[EmbedderTypes]]
 
-EMBEDDER_STRATEGIES: dict[str, _EmbedderTypes] = {
+STRATEGIES: dict[str, _EmbedderTypes] = {
     'esm2': (Esm2EmbedderConfig, Esm2Embedder),
     'auto': (AutoEmbedderConfig, AutoEmbedder),
 }
+
+
+# Make a function to combine the config and embedder initialization
+# since the registry only accepts functions with hashable arguments.
+def _factory_fn(**kwargs: dict[str, Any]) -> EmbedderTypes:
+    name = kwargs.get('name', '')
+    strategy = STRATEGIES.get(name)  # type: ignore[arg-type]
+    if not strategy:
+        raise ValueError(f'Unknown embedder name: {name}')
+
+    # Unpack the embedder strategy
+    config_cls, embedder_cls = strategy
+
+    # Create the embedder config
+    config = config_cls(**kwargs)
+    # Create the embedder instance
+    return embedder_cls(config)
 
 
 def get_embedder(
@@ -50,27 +67,11 @@ def get_embedder(
     ValueError
         If the embedder name is unknown.
     """
-    name = embedder_kwargs.get('name', '')
-    embedder_strategy = EMBEDDER_STRATEGIES.get(name)
-    if not embedder_strategy:
-        raise ValueError(f'Unknown embedder name: {name}')
-
-    # Unpack the embedder strategy
-    config_cls, embedder_cls = embedder_strategy
-
-    # Make a function to combine the config and embedder initialization
-    # since the registry only accepts functions with hashable arguments.
-    def embedder_factory(**embedder_kwargs: dict[str, Any]) -> EmbedderTypes:
-        # Create the embedder config
-        config = config_cls(**embedder_kwargs)
-        # Create the embedder instance
-        return embedder_cls(config)
-
     # Register and create the embedder instance
     if register:
-        registry.register(embedder_factory)
-        embedder = registry.get(embedder_factory, **embedder_kwargs)
+        registry.register(_factory_fn)
+        embedder = registry.get(_factory_fn, **embedder_kwargs)
     else:
-        embedder = embedder_factory(**embedder_kwargs)
+        embedder = _factory_fn(**embedder_kwargs)
 
     return embedder
