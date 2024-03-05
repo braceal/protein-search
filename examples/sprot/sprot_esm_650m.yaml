@@ -2,7 +2,7 @@ input_dir: /lus/eagle/projects/FoundEpidem/braceal/projects/kbase-protein-search
 output_dir: /lus/eagle/projects/FoundEpidem/braceal/projects/kbase-protein-search/data/sprot_esm_650m_embeddings
 glob_patterns: ['*.fasta']
 num_data_workers: 4
-batch_size: 128
+batch_size: 8
 
 embedder_config:
   name: esm2

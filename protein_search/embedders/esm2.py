@@ -43,6 +43,10 @@ class Esm2Embedder(BaseEmbedder):
             config.pretrained_model_name_or_path,
         )
 
+        # Set the maximum length of the tokenizer to enable truncation
+        # Note: The maximum length is 1026 for ESM-2 models
+        tokenizer.model_max_length = model.config.max_position_embeddings
+
         # Convert the model to half precision
         if config.half_precision:
             model.half()
