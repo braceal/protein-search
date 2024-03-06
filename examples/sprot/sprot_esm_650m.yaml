@@ -1,5 +1,5 @@
-input_dir: /lus/eagle/projects/FoundEpidem/braceal/projects/kbase-protein-search/data/sprot
-output_dir: /lus/eagle/projects/FoundEpidem/braceal/projects/kbase-protein-search/data/sprot_esm_650m_embeddings
+input_dir: /lus/eagle/projects/FoundEpidem/braceal/projects/kbase-protein-search/data/swiss-prot/sprot
+output_dir: /lus/eagle/projects/FoundEpidem/braceal/projects/kbase-protein-search/data/swiss-prot/sprot_esm_650m_embeddings
 glob_patterns: ['*.fasta']
 num_data_workers: 4
 batch_size: 8

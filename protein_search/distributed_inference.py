@@ -325,6 +325,11 @@ if __name__ == '__main__':
         config.output_dir / 'parsl',
     )
 
+    # Log the checkpoint files
+    print(
+        f'Found the following checkpoints: {parsl_config.checkpoint_files}',
+    )
+
     # Distribute the input files across processes
     with ParslPoolExecutor(parsl_config) as pool:
         pool.map(worker_fn, input_files)
