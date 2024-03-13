@@ -14,10 +14,16 @@ from protein_search.distributed_inference import average_pool
 from protein_search.embedders import BaseEmbedder
 from protein_search.utils import read_fasta
 
+METRICS = {
+    'l2': faiss.METRIC_L2,
+    'inner_product': faiss.METRIC_INNER_PRODUCT,
+}
+
 
 def generate_dataset(
     fasta_files: list[Path],
     embedding_files: list[Path],
+    metric: str = 'inner_product',
 ) -> Iterator[dict[str, str | np.ndarray]]:
     """Generate a dataset from the FASTA and embedding files.
 
@@ -37,17 +43,29 @@ def generate_dataset(
         # Read the FASTA file and embeddings one by one
         sequences = read_fasta(fasta_file)
         embeddings = np.load(embedding_file)
+
+        if metric == 'inner_product':
+            # Normalize the embeddings for inner product search
+            # to make the cosine similarity equivalent to inner product. See:
+            # https://github.com/facebookresearch/faiss/wiki/MetricType-and-distances
+            original_dtype = embeddings.dtype
+            embeddings = embeddings.astype(np.float32)
+            faiss.normalize_L2(embeddings)
+            # Convert the embeddings back to the original dtype (e.g., float16)
+            embeddings = embeddings.astype(original_dtype)
+
         # Yield the sequences and embeddings for the given data files
         for sequence, embedding in zip(sequences, embeddings):
             yield {'tags': sequence.tag, 'embeddings': embedding}
 
 
-def build_faiss_index(
+def build_faiss_index(  # noqa: PLR0913
     fasta_dir: Path,
     embedding_dir: Path,
     dataset_dir: Path,
     pattern: str = '*.fasta',
     faiss_index_name: str = 'embeddings',
+    metric: str = 'inner_product',
 ) -> None:
     """Build a FAISS index for a dataset.
 
@@ -65,6 +83,9 @@ def build_faiss_index(
     faiss_index_name : str
         The name of the dataset field containing the FAISS index,
         by default 'embeddings'.
+    metric : str
+        The metric to use for the FAISS index ['l2', 'inner_product'],
+        by default 'inner_product'.
     """
     # Create the dataset directory if it does not exist
     dataset_dir.mkdir(parents=True, exist_ok=True)
@@ -81,6 +102,7 @@ def build_faiss_index(
         gen_kwargs={
             'fasta_files': fasta_files,
             'embedding_files': embedding_files,
+            'metric': metric,
         },
     )
 
@@ -89,7 +111,7 @@ def build_faiss_index(
         column=faiss_index_name,
         index_name=faiss_index_name,
         faiss_verbose=True,
-        metric_type=faiss.METRIC_L2,
+        metric_type=METRICS[metric],
     )
 
     # Save the dataset to disk
@@ -104,12 +126,13 @@ def build_faiss_index(
 class SimilaritySearch:
     """Similarity search class for searching similar sequences in a dataset."""
 
-    def __init__(
+    def __init__(  # noqa: PLR0913
         self,
         dataset_dir: Path,
         embedder: BaseEmbedder,
         faiss_index_file: Path | None = None,
         faiss_index_name: str = 'embeddings',
+        metric: str = 'inner_product',
     ) -> None:
         """Initialize the SimilaritySearch class.
 
@@ -117,6 +140,8 @@ class SimilaritySearch:
         ----------
         dataset_dir : Path
             The path to the dataset directory.
+        embedder : BaseEmbedder
+            The embedder instance to use for embedding sequences.
         faiss_index_file : Path, optional
             The path to the FAISS index file, by default None,
             in which case the FAISS index file is assumed to be
@@ -124,22 +149,23 @@ class SimilaritySearch:
         faiss_index_name : str, optional
             The name of the dataset field containing the FAISS index,
             by default 'embeddings'.
+        metric : str, optional
+            The metric to use for the FAISS index ['l2', 'inner_product'],
+            by default 'inner_product'.
         """
+        self.faiss_index_name = faiss_index_name
+        self.metric = metric
+        self.embedder = embedder
+
         # By default, the FAISS index file has the same name as the dataset
         # and is saved with a .index extension in the directory containing
         # the dataset
         if faiss_index_file is None:
             faiss_index_file = dataset_dir.with_suffix('.index')
 
-        # Set the name of the dataset field containing the FAISS index
-        self.faiss_index_name = faiss_index_name
-
         # Load the dataset from disk
         self.dataset = Dataset.load_from_disk(dataset_dir)
         self.dataset.load_faiss_index(self.faiss_index_name, faiss_index_file)
-
-        # Load the model once for generating the embeddings
-        self.embedder = embedder
 
     def search(
         self,
@@ -181,11 +207,19 @@ class SimilaritySearch:
             query_embedding = self.get_pooled_embeddings(query_sequence)
 
         # Search the dataset for the top k similar sequences
-        return self.dataset.search_batch(
+        results = self.dataset.search_batch(
             index_name=self.faiss_index_name,
             queries=query_embedding,
             k=top_k,
         )
+
+        # Assure that the results are pure floats, ints and not numpy types
+        results = BatchedSearchResults(
+            total_scores=results.total_scores.tolist(),
+            total_indices=results.total_indices.tolist(),
+        )
+
+        return results
 
     @torch.no_grad()
     def get_pooled_embeddings(
@@ -229,6 +263,10 @@ class SimilaritySearch:
         # Convert the query embeddings to numpy float32 for FAISS
         pool_embeds = pool_embeds.cpu().numpy().astype(np.float32)
 
+        # Normalize the embeddings for inner product search
+        if self.metric == 'inner_product':
+            faiss.normalize_L2(pool_embeds)
+
         return pool_embeds
 
     def get_sequence_tags(self, indices: list[int]) -> list[str]:
@@ -244,4 +282,19 @@ class SimilaritySearch:
         list[str]
             The list of sequence tags.
         """
-        return [self.dataset['tags'][i] for i in indices]
+        return [self.dataset[i]['tags'] for i in indices]
+
+    def get_sequence_embeddings(self, indices: list[int]) -> np.ndarray:
+        """Get the sequence embeddings for the given indices.
+
+        Parameters
+        ----------
+        indices : list[int]
+            The list of indices returned from the search.
+
+        Returns
+        -------
+        np.ndarray
+            Array of sequence embeddings (shape: [num_sequences, embed_size])
+        """
+        return np.array([self.dataset[i]['embeddings'] for i in indices])

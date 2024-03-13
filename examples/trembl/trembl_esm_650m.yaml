@@ -1,0 +1,36 @@
+input_dir: /lus/eagle/projects/FoundEpidem/braceal/projects/kbase-protein-search/data/trembl/trembl
+output_dir: /lus/eagle/projects/FoundEpidem/braceal/projects/kbase-protein-search/data/trembl/trembl_esm_650m_embeddings_run_2
+glob_patterns: ['*.fasta']
+num_data_workers: 4
+batch_size: 8
+
+embedder_config:
+  name: esm2
+  pretrained_model_name_or_path: facebook/esm2_t33_650M_UR50D
+
+compute_config:
+  name: polaris
+  num_nodes: 25
+  worker_init: "module load conda/2023-10-04; conda activate protein-search; export HF_HOME=/lus/eagle/projects/CVD-Mol-AI/braceal/.cache/"
+  scheduler_options: "#PBS -l filesystems=home:eagle:grand"
+  account: FoundEpidem
+  queue: prod
+  walltime: "06:00:00"
+
+# n_files = 463
+# n_gpus_per_node = 4
+# n_nodes = 116
+# n_files / (n_gpus_per_node * n_nodes)
+# 0.9978448275862069 # 1 file per GPU
+# All files will be processed in parallel
+
+# n_seqs_per_file = 500_000
+# batch_size = 8
+# steps_per_sec = 12
+# steps = n_seqs / batch_size
+# hour_per_file = steps / (steps_per_sec / 3600)
+# 1.446759259259259 hours per file
+# The workflow should finish in ~2 hours.
+# We request 24 hours to be safe and to test the scaling of the workflow.
+
+# 03-06-2024: We changed to 25 nodes since queue time was too long.

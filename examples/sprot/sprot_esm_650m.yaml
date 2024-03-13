@@ -1,0 +1,18 @@
+input_dir: /lus/eagle/projects/FoundEpidem/braceal/projects/kbase-protein-search/data/swiss-prot/sprot
+output_dir: /lus/eagle/projects/FoundEpidem/braceal/projects/kbase-protein-search/data/swiss-prot/sprot_esm_650m_embeddings
+glob_patterns: ['*.fasta']
+num_data_workers: 4
+batch_size: 8
+
+embedder_config:
+  name: esm2
+  pretrained_model_name_or_path: facebook/esm2_t33_650M_UR50D
+
+compute_config:
+  name: polaris
+  num_nodes: 1
+  worker_init: "module load conda/2023-10-04; conda activate protein-search; export HF_HOME=/lus/eagle/projects/CVD-Mol-AI/braceal/.cache/"
+  scheduler_options: "#PBS -l filesystems=home:eagle:grand"
+  account: FoundEpidem
+  queue: debug-scaling
+  walltime: 01:00:00

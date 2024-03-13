@@ -19,6 +19,7 @@ from parsl.executors import HighThroughputExecutor
 from parsl.launchers import MpiExecLauncher
 from parsl.providers import LocalProvider
 from parsl.providers import PBSProProvider
+from parsl.utils import get_all_checkpoints
 
 from protein_search.utils import BaseModel
 from protein_search.utils import PathLike
@@ -179,7 +180,8 @@ class PolarisConfig(BaseComputeConfig):
                 ),
             ],
             run_dir=str(run_dir),
-            # checkpoint_mode='task_exit',
+            checkpoint_mode='task_exit',
+            checkpoint_files=get_all_checkpoints(str(run_dir)),
             retries=self.retries,
             app_cache=True,
         )

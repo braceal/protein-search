@@ -57,6 +57,12 @@ def build_index(
         '-p',
         help='The pattern to match the FASTA files.',
     ),
+    metric: str = typer.Option(
+        'inner_product',
+        '--metric',
+        '-m',
+        help='The metric to use for the FAISS index [l2, inner_product].',
+    ),
 ) -> None:
     """Build a FAISS index for a dataset."""
     from protein_search.search import build_faiss_index
@@ -66,11 +72,12 @@ def build_index(
         embedding_dir=embedding_dir,
         dataset_dir=dataset_dir,
         pattern=pattern,
+        metric=metric,
     )
 
 
 @app.command()
-def search_index(
+def search_index(  # noqa: PLR0913
     dataset_dir: Path = typer.Option(  # noqa: B008
         ...,
         '--dataset_dir',
@@ -102,6 +109,12 @@ def search_index(
         '-k',
         help='The number of top results to return.',
     ),
+    metric: str = typer.Option(
+        'inner_product',
+        '--metric',
+        '-m',
+        help='The metric to use for the FAISS index [l2, inner_product].',
+    ),
 ) -> None:
     """Search for similar sequences."""
     from protein_search.embedders import get_embedder
@@ -127,7 +140,11 @@ def search_index(
     )
 
     # Initialize the similarity search
-    ss = SimilaritySearch(dataset_dir=dataset_dir, embedder=embedder)
+    ss = SimilaritySearch(
+        dataset_dir=dataset_dir,
+        embedder=embedder,
+        metric=metric,
+    )
 
     # Read the input query file
     query_sequences = [seq.sequence for seq in read_fasta(query_file)]
@@ -139,7 +156,11 @@ def search_index(
     for score, ind in zip(results.total_scores, results.total_indices):
         # Get the sequence tags found by the search
         found_tags = ss.get_sequence_tags(ind)
-        print(f'scores: {score}, indices: {ind}, tags: {found_tags}')
+        embeddings = ss.get_sequence_embeddings(ind)
+        print(
+            f'scores: {score}, indices: {ind}, tags: {found_tags}, '
+            f'embeddings: {embeddings.shape}',
+        )
 
 
 def main() -> None:
