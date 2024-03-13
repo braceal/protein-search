@@ -150,7 +150,9 @@ def search_index(  # noqa: PLR0913
     query_sequences = [seq.sequence for seq in read_fasta(query_file)]
 
     # Search for similar sequences
-    results = ss.search(query_sequences, top_k=top_k)
+    results, query_embeddings = ss.search(query_sequences, top_k=top_k)
+
+    print(f'Query embeddings: {query_embeddings.shape}')
 
     # Print the results
     for score, ind in zip(results.total_scores, results.total_indices):

@@ -172,7 +172,7 @@ class SimilaritySearch:
         query_sequence: str | list[str] | None = None,
         query_embedding: np.ndarray | None = None,
         top_k: int = 1,
-    ) -> BatchedSearchResults:
+    ) -> tuple[BatchedSearchResults, np.ndarray]:
         """Search for similar sequences.
 
         Parameters
@@ -184,11 +184,14 @@ class SimilaritySearch:
 
         Returns
         -------
-        BatchedSearchResults:
+        BatchedSearchResults
             A namedtuple with list[list[float]] (.total_scores) of scores for
             each  of the top_k returned items and a list[list[int]]]
             (.total_indices) of indices for each of the top_k returned items
             for each query sequence.
+        np.ndarray
+            The embeddings of the query sequences
+            (shape: [num_sequences, embedding_size])
 
         Raises
         ------
@@ -219,7 +222,7 @@ class SimilaritySearch:
             total_indices=results.total_indices.tolist(),
         )
 
-        return results
+        return results, query_embedding
 
     @torch.no_grad()
     def get_pooled_embeddings(
