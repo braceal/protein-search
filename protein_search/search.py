@@ -9,8 +9,11 @@ import numpy as np
 import torch
 from datasets import Dataset
 from datasets.search import BatchedSearchResults
+from torch.utils.data import DataLoader
 
-from protein_search.distributed_inference import average_pool
+from protein_search.distributed_inference import compute_avg_embeddings
+from protein_search.distributed_inference import DataCollator
+from protein_search.distributed_inference import InMemoryDataset
 from protein_search.embedders import BaseEmbedder
 from protein_search.utils import read_fasta
 
@@ -133,6 +136,9 @@ class SimilaritySearch:
         faiss_index_file: Path | None = None,
         faiss_index_name: str = 'embeddings',
         metric: str = 'inner_product',
+        batch_size: int = 8,
+        num_data_workers: int = 4,
+        prefetch_factor: int = 2,
     ) -> None:
         """Initialize the SimilaritySearch class.
 
@@ -152,10 +158,19 @@ class SimilaritySearch:
         metric : str, optional
             The metric to use for the FAISS index ['l2', 'inner_product'],
             by default 'inner_product'.
+        batch_size : int, optional
+            The batch size for embedding the sequences, by default 8.
+        num_data_workers : int, optional
+            The number of data workers for the DataLoader, by default 4.
+        prefetch_factor : int, optional
+            The prefetch factor for the DataLoader, by default 2.
         """
         self.faiss_index_name = faiss_index_name
         self.metric = metric
         self.embedder = embedder
+        self.batch_size = batch_size
+        self.num_data_workers = num_data_workers
+        self.prefetch_factor = prefetch_factor
 
         # By default, the FAISS index file has the same name as the dataset
         # and is saved with a .index extension in the directory containing
@@ -246,31 +261,27 @@ class SimilaritySearch:
         if isinstance(query_sequence, str):
             query_sequence = [query_sequence]
 
-        # Tokenize the query sequences
-        batch_encoding = self.embedder.tokenizer(
-            query_sequence,
-            padding=True,
-            truncation=True,
-            return_tensors='pt',
+        # Build a torch dataset for efficient batching
+        dataloader = DataLoader(
+            pin_memory=True,
+            batch_size=self.batch_size,
+            num_workers=self.num_data_workers,
+            prefetch_factor=self.prefetch_factor,
+            dataset=InMemoryDataset(query_sequence),
+            collate_fn=DataCollator(self.embedder.tokenizer),
         )
 
-        # Move the batch encoding to the device
-        inputs = batch_encoding.to(self.embedder.device)
-
-        # Embed the query sequences
-        query_embeddings = self.embedder.embed(inputs)
-
         # Compute average embeddings for the query sequences
-        pool_embeds = average_pool(query_embeddings, inputs.attention_mask)
+        query_embeddings = compute_avg_embeddings(self.embedder, dataloader)
 
         # Convert the query embeddings to numpy float32 for FAISS
-        pool_embeds = pool_embeds.cpu().numpy().astype(np.float32)
+        query_embeddings = query_embeddings.astype(np.float32)
 
         # Normalize the embeddings for inner product search
         if self.metric == 'inner_product':
-            faiss.normalize_L2(pool_embeds)
+            faiss.normalize_L2(query_embeddings)
 
-        return pool_embeds
+        return query_embeddings
 
     def get_sequence_tags(self, indices: list[int]) -> list[str]:
         """Get the sequence tags for the given indices.
